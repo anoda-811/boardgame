@@ -1,26 +1,208 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #e6eee4;
+  --foreground: #18241c;
+  --ink: #18241c;
+  --pine: #234030;
+  --pine-deep: #163024;
+  --lacquer: #9a1f2b;
+  --gold: #b8953d;
+  --panel: #f2f7ef;
+  --mist: #c5d6c4;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ink: var(--ink);
+  --color-pine: var(--pine);
+  --color-pine-deep: var(--pine-deep);
+  --color-lacquer: var(--lacquer);
+  --color-gold: var(--gold);
+  --color-panel: var(--panel);
+  --color-mist: var(--mist);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), "Hiragino Mincho ProN", serif;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1.5deg);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes petal-fall {
+  0% {
+    transform: translateY(-10%) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateY(110vh) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+@keyframes title-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 0 transparent;
+  }
+  50% {
+    text-shadow: 0 0 28px rgba(184, 149, 61, 0.4);
+  }
+}
+
+.animate-drift {
+  animation: drift 5s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.8s ease-out both;
+}
+
+.animate-title-glow {
+  animation: title-glow 3.5s ease-in-out infinite;
+}
+
+.petal {
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  border-radius: 50% 0 50% 0;
+  background: radial-gradient(circle at 30% 30%, #f2b8b8, #c45c5c);
+  opacity: 0;
+  animation: petal-fall linear infinite;
+  pointer-events: none;
+}
+
+@keyframes deck-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 192, 138, 0.35);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(212, 192, 138, 0);
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes card-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.92) rotateY(40deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateY(0deg);
+  }
+}
+
+.animate-deck-pulse {
+  animation: deck-pulse 1.4s ease-in-out infinite;
+}
+
+.animate-card-reveal {
+  animation: card-reveal 0.45s ease-out both;
+  transform-style: preserve-3d;
+}
+
+/* Shogi luxurious board */
+.shogi-table {
+  background:
+    linear-gradient(145deg, rgba(255, 230, 180, 0.12), transparent 40%),
+    linear-gradient(160deg, #5a3a22 0%, #3d2614 45%, #2a180e 100%);
+  border: 1px solid #7a5535;
+  border-radius: 4px;
+  box-shadow:
+    0 1px 0 rgba(255, 220, 170, 0.18) inset,
+    0 -8px 20px rgba(0, 0, 0, 0.35) inset,
+    0 24px 48px rgba(0, 0, 0, 0.55),
+    0 2px 0 #1a0e08;
+}
+
+.shogi-board {
+  background-color: #d2a86a;
+  background-image:
+    linear-gradient(to right, #1a1008 1.5px, transparent 1.5px),
+    linear-gradient(to bottom, #1a1008 1.5px, transparent 1.5px),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 235, 190, 0.16) 0px,
+      rgba(255, 235, 190, 0.03) 3px,
+      rgba(120, 75, 35, 0.1) 6px,
+      rgba(210, 165, 100, 0.08) 10px,
+      rgba(255, 235, 190, 0.1) 14px
+    ),
+    linear-gradient(165deg, #e8c890 0%, #d4ac6e 42%, #c49658 78%, #b07e42 100%);
+  background-size:
+    11.111% 100%,
+    100% 11.111%,
+    16px 100%,
+    100% 100%;
+  box-shadow:
+    inset 0 0 0 2px #1a1008,
+    inset 0 0 40px rgba(70, 40, 12, 0.2);
+}
+
+.shogi-board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(#1a1008, #1a1008) 0 0 / 100% 1.5px no-repeat,
+    linear-gradient(#1a1008, #1a1008) 0 100% / 100% 1.5px no-repeat,
+    linear-gradient(#1a1008, #1a1008) 0 0 / 1.5px 100% no-repeat,
+    linear-gradient(#1a1008, #1a1008) 100% 0 / 1.5px 100% no-repeat;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.shogi-komadai {
+  background:
+    linear-gradient(180deg, rgba(255, 220, 170, 0.08), transparent 40%),
+    linear-gradient(160deg, #3a2416, #24160e);
+  border: 1px solid rgba(122, 85, 53, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 170, 0.1),
+    0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+@keyframes last-move-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(126, 182, 255, 0.15);
+  }
+  50% {
+    box-shadow: inset 0 0 18px 2px rgba(126, 182, 255, 0.35);
+  }
+}
+
+.animate-last-move {
+  animation: last-move-pulse 1.2s ease-in-out 2;
 }
