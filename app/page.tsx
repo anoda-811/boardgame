@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CardArt } from "./games/hanafuda/components/CardArt";
 import { PieceStandPreview } from "./games/shogi/components/PieceView";
+import { ChessPreviewRow } from "./games/chess/components/ChessPiece";
 import type { HanafudaCard } from "@/lib/hanafuda/cards";
 
 const previewCards: HanafudaCard[] = [
@@ -48,6 +49,15 @@ const games = [
     href: "/games/shogi",
     available: true,
     accent: "from-[#5a3a1e] via-[#3d2814] to-[#1a120c]",
+  },
+  {
+    id: "chess",
+    title: "チェス",
+    subtitle: "Chess",
+    description: "象牙と黒檀の駒で、王を追い詰める。",
+    href: "/games/chess",
+    available: true,
+    accent: "from-[#243140] via-[#151c26] to-[#0b0e13]",
   },
 ];
 
@@ -124,6 +134,10 @@ export default function Home() {
                   ) : game.id === "shogi" ? (
                     <div className="absolute inset-0 flex items-center justify-center px-4">
                       <PieceStandPreview labels={["香", "桂", "銀", "金", "玉"]} />
+                    </div>
+                  ) : game.id === "chess" ? (
+                    <div className="absolute inset-0 flex items-center justify-center px-4">
+                      <ChessPreviewRow types={["r", "n", "b", "q", "k"]} />
                     </div>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
