@@ -364,7 +364,7 @@ function GameScreen({
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#1c2530_0%,_#0b0e13_55%,_#050608_100%)]"
       />
 
-      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-3xl grid-rows-[auto_4.25rem_minmax(0,1fr)_4.25rem] gap-3 px-3 py-4 sm:px-6 sm:py-6">
+      <div className="relative z-10 mx-auto grid h-dvh min-h-[520px] w-full max-w-3xl grid-rows-[auto_4.25rem_minmax(0,1fr)_4.25rem] gap-3 px-3 py-3 sm:px-6 sm:py-4">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs tracking-[0.35em] text-[#c9a860]/65">CHESS</p>
@@ -435,11 +435,11 @@ function GameScreen({
         />
 
         <div
-          className="flex min-h-0 items-center justify-center"
+          className="flex min-h-0 items-center justify-center [container-type:size]"
           onPointerDown={() => soundOn && primeAudio()}
         >
           {view === "3d" ? (
-            <div className="relative h-[max(320px,min(calc(100dvh_-_16rem),600px))] w-full max-w-[720px] overflow-hidden rounded-md bg-[radial-gradient(ellipse_at_50%_40%,_#243140_0%,_#10151c_60%,_#07090c_100%)] shadow-[inset_0_0_60px_rgba(0,0,0,0.6)]">
+            <div className="relative h-full w-full max-w-[720px] overflow-hidden rounded-md bg-[radial-gradient(ellipse_at_50%_40%,_#243140_0%,_#10151c_60%,_#07090c_100%)] shadow-[inset_0_0_60px_rgba(0,0,0,0.6)]">
               <Chess3DBoard
                 board={board}
                 selected={state.selected}
@@ -450,7 +450,7 @@ function GameScreen({
               />
             </div>
           ) : (
-          <div className="chess-frame w-[max(280px,min(100%,560px,calc(100dvh_-_17rem)))] p-[18px] sm:p-6">
+          <div className="chess-frame w-[min(100cqw,100cqh,560px)] p-[18px] sm:p-6">
             <div className="relative">
               <div className="chess-board grid aspect-square w-full grid-cols-8 grid-rows-8 overflow-hidden">
                 {board.map((row, r) =>
