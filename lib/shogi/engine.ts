@@ -1,3 +1,5 @@
+import { pickAmateurMove } from "./amateur";
+import { inCheck } from "./board";
 import type { AiRank } from "./game";
 import { parseBestmove, toSfen } from "./sfen";
 import type { Board, Hand, Move, Side } from "./types";
@@ -22,9 +24,8 @@ const RANK_SEARCH: Record<
   AiRank,
   { skill: number; go: string; limitMs: number; multipv: number; margin: number; softness?: number }
 > = {
-  // Full eval, short search. margin is how far (centipawn) from the best
-  // move we may wander. A free bishop is several hundred, so it stays out.
-  // softness flattens the pick. 10kyu often plays a merely decent move.
+  // 10kyu keeps the shallow read, then amateur.ts bends the choice.
+  // margin applies when the king is in check and the engine has to answer.
   "10kyu": { skill: 20, go: "go depth 2", limitMs: 4000, multipv: 8, margin: 90, softness: 70 },
   "8kyu": { skill: 20, go: "go depth 3", limitMs: 5000, multipv: 4, margin: 35 },
   "5kyu": { skill: 20, go: "go depth 4", limitMs: 6000, multipv: 3, margin: 20 },
@@ -212,6 +213,10 @@ export function requestEngineMove(
       current.postMessage(profile.go);
       const { best, infos } = await searched;
       if (ticket !== generation) return null;
+      if (rank === "10kyu" && !inCheck(board, turn)) {
+        const amateur = pickAmateurMove(board, hands, turn, infos);
+        if (amateur) return amateur;
+      }
       return parseBestmove(selectSoftMove(best, infos, profile.margin, profile.softness));
     } catch {
       return null;

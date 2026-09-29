@@ -37,7 +37,7 @@ export const AI_RANKS: Record<
     slip: number;
   }
 > = {
-  "10kyu": { label: "十級", description: "やねうら王の浅い読み。筋は通るが、良い手のなかから散らして選ぶ", depth: 1, width: 4, qDepth: 0, ms: 20, noise: 0, blunder: 0, judgment: 1, slip: 0 },
+  "10kyu": { label: "十級", description: "駒は取る。受けは少し甘く、詰みは半分ほど外す", depth: 1, width: 4, qDepth: 0, ms: 20, noise: 0, blunder: 0, judgment: 1, slip: 0 },
   "8kyu": { label: "八級", description: "やねうら王。少し先まで読み、大きな損はしない", depth: 1, width: 5, qDepth: 0, ms: 30, noise: 0, blunder: 0, judgment: 1, slip: 0 },
   "5kyu": { label: "五級", description: "やねうら王。近い手のなかから選ぶ", depth: 2, width: 6, qDepth: 1, ms: 45, noise: 0, blunder: 0, judgment: 1, slip: 0 },
   "2kyu": { label: "二級", description: "やねうら王。ほぼ本筋で、たまに一歩遅い", depth: 2, width: 8, qDepth: 1, ms: 70, noise: 0, blunder: 0, judgment: 1, slip: 0 },
