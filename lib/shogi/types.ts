@@ -82,9 +82,9 @@ export const HAND_ORDER: UnpromotedType[] = [
 export const MATERIAL: Record<PieceType, number> = {
   king: 10000,
   rook: 1000,
-  dragon: 1200,
+  dragon: 1500,
   bishop: 800,
-  horse: 1000,
+  horse: 1300,
   gold: 600,
   silver: 500,
   promotedSilver: 600,

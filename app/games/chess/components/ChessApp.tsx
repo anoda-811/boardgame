@@ -227,7 +227,7 @@ function TitleScreen({
   onStart: () => void;
 }) {
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#0b0e13] text-[#efe6d2]">
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#0b0e13] text-[#efe6d2]">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#1f2a36_0%,_#0b0e13_60%,_#050608_100%)]"
@@ -237,24 +237,24 @@ function TitleScreen({
         className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-[radial-gradient(ellipse_at_top,_rgba(201,168,96,0.16),transparent_55%)]"
       />
 
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-        <p className="animate-fade-up mb-6 text-xs tracking-[0.45em] text-[#c9a860]/75">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-[clamp(0.75rem,3vh,4rem)] text-center">
+        <p className="animate-fade-up mb-[clamp(0.5rem,2vh,1.5rem)] text-xs tracking-[0.45em] text-[#c9a860]/75">
           CHESS
         </p>
-        <h1 className="animate-fade-up animate-title-glow font-[family-name:var(--font-display)] text-7xl tracking-[0.2em] sm:text-8xl">
+        <h1 className="animate-fade-up animate-title-glow font-[family-name:var(--font-display)] text-[clamp(3rem,10vh,6rem)] leading-none tracking-[0.2em]">
           チェス
         </h1>
-        <p className="animate-fade-up mt-5 max-w-sm text-sm leading-relaxed tracking-wide text-[#c9a860]/70 sm:text-base">
+        <p className="animate-fade-up mt-[clamp(0.5rem,2vh,1.25rem)] max-w-sm text-sm leading-relaxed tracking-wide text-[#c9a860]/70 sm:text-base">
           象牙と黒檀、六十四の升目。
           <br />
           白番であなたが指します。
         </p>
 
-        <div className="animate-fade-up mt-10">
+        <div className="animate-fade-up mt-[clamp(0.5rem,3vh,2.5rem)]">
           <ChessPreviewRow types={["r", "n", "b", "q", "k"]} />
         </div>
 
-        <div className="animate-fade-up mt-10 flex w-full max-w-md flex-col gap-5">
+        <div className="animate-fade-up mt-[clamp(0.75rem,3vh,2.5rem)] flex w-full max-w-md flex-col gap-[clamp(0.5rem,2vh,1.25rem)]">
           <ChoiceGroup
             label="相手の強さ"
             value={level}
@@ -276,7 +276,7 @@ function TitleScreen({
           />
         </div>
 
-        <div className="animate-fade-up mt-8 flex flex-col items-center gap-4">
+        <div className="animate-fade-up mt-[clamp(0.75rem,3vh,2rem)] flex flex-col items-center gap-[clamp(0.5rem,1.5vh,1rem)]">
           <button
             type="button"
             onClick={onStart}
@@ -290,7 +290,7 @@ function TitleScreen({
         </div>
       </div>
 
-      <footer className="relative z-10 pb-8 text-center">
+      <footer className="relative z-10 pb-[clamp(0.75rem,3vh,2rem)] text-center">
         <Link
           href="/"
           className="text-sm tracking-widest text-[#c9a860]/50 transition hover:text-[#efe6d2]"

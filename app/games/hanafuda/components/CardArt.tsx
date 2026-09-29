@@ -1,545 +1,377 @@
 import type { HanafudaCard } from "@/lib/hanafuda/cards";
-import { useId } from "react";
 
-/** Traditional-ish hanafuda face art (viewBox 70×100). */
+/* Traditional hanafuda palette: flat inks with bold black outlines. */
+const INK = "#1a1612";
+const PAPER = "#f7f0de";
+const RED = "#c8221e";
+const DEEP_RED = "#8f1614";
+const GREEN = "#2f7a3a";
+const DEEP_GREEN = "#1d4f28";
+const YELLOW = "#e9b625";
+const PURPLE = "#5b3a8c";
+const BLUE = "#1f4c9a";
+const BROWN = "#7a4a22";
+const PINK = "#f2b3c0";
+const WHITE = "#fffaf0";
+
+const line = { stroke: INK, strokeWidth: 0.9, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
+
+/** Hanafuda face art (viewBox 70×100). */
 export function CardArt({ card }: { card: HanafudaCard }) {
-  const kasuVariant = Number(card.id.split("-")[1] ?? 0);
-
+  const variant = Number(card.id.split("-")[1] ?? 0);
   return (
-    <svg
-      viewBox="0 0 70 100"
-      className="h-full w-full"
-      aria-hidden
-      shapeRendering="geometricPrecision"
-    >
-      <defs>
-        <linearGradient id={`paper-${card.id}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#fff8ea" />
-          <stop offset="55%" stopColor="#f4e8d0" />
-          <stop offset="100%" stopColor="#ead9b8" />
-        </linearGradient>
-        <radialGradient id={`glow-${card.id}`} cx="50%" cy="35%" r="55%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-
-      <rect
-        x="1.5"
-        y="1.5"
-        width="67"
-        height="97"
-        rx="3.5"
-        fill={`url(#paper-${card.id})`}
-        stroke="#c9b48a"
-        strokeWidth="1.2"
-      />
-      <rect
-        x="4"
-        y="4"
-        width="62"
-        height="92"
-        rx="2"
-        fill="none"
-        stroke="#d7c4a0"
-        strokeWidth="0.6"
-        opacity="0.7"
-      />
-      <rect x="1.5" y="1.5" width="67" height="97" rx="3.5" fill={`url(#glow-${card.id})`} />
-
-      <MonthScene month={card.month} kasuVariant={kasuVariant} kind={card.kind} />
-      <FeatureMotif card={card} />
-
-      {card.kind === "bright" && (
-        <circle cx="58" cy="12" r="5.5" fill="#c4a35a" opacity="0.9" />
-      )}
-      {card.kind === "bright" && (
-        <text
-          x="58"
-          y="14.2"
-          textAnchor="middle"
-          fontSize="6"
-          fill="#fff8ea"
-          fontFamily="serif"
-        >
-          光
-        </text>
-      )}
+    <svg viewBox="0 0 70 100" className="h-full w-full" aria-hidden shapeRendering="geometricPrecision">
+      <rect x="0.5" y="0.5" width="69" height="99" rx="4" fill={INK} />
+      <rect x="2.2" y="2.2" width="65.6" height="95.6" rx="2.6" fill={PAPER} />
+      <svg x="2.2" y="2.2" width="65.6" height="95.6" viewBox="2.2 2.2 65.6 95.6" overflow="hidden">
+        <MonthArt card={card} v={variant} />
+      </svg>
+      <rect x="2.2" y="2.2" width="65.6" height="95.6" rx="2.6" fill="none" stroke={INK} strokeWidth="0.6" />
     </svg>
   );
 }
 
-function MonthScene({
-  month,
-  kasuVariant,
-  kind,
-}: {
-  month: number;
-  kasuVariant: number;
-  kind: HanafudaCard["kind"];
-}) {
-  const dense = kind === "chaff";
-  switch (month) {
+function MonthArt({ card, v }: { card: HanafudaCard; v: number }) {
+  switch (card.month) {
     case 1:
-      return <Pine dense={dense} variant={kasuVariant} />;
+      return <PineCard card={card} v={v} />;
     case 2:
-      return <Plum dense={dense} variant={kasuVariant} />;
+      return <PlumCard card={card} v={v} />;
     case 3:
-      return <Cherry dense={dense} variant={kasuVariant} />;
+      return <CherryCard card={card} v={v} />;
     case 4:
-      return <Wisteria dense={dense} variant={kasuVariant} />;
+      return <WisteriaCard card={card} v={v} />;
     case 5:
-      return <Iris dense={dense} variant={kasuVariant} />;
+      return <IrisCard card={card} v={v} />;
     case 6:
-      return <Peony dense={dense} variant={kasuVariant} />;
+      return <PeonyCard card={card} v={v} />;
     case 7:
-      return <Clover dense={dense} variant={kasuVariant} />;
+      return <CloverCard card={card} v={v} />;
     case 8:
-      return <Susuki dense={dense} variant={kasuVariant} />;
+      return <SusukiCard card={card} v={v} />;
     case 9:
-      return <Chrysanthemum dense={dense} variant={kasuVariant} />;
+      return <ChrysanthemumCard card={card} v={v} />;
     case 10:
-      return <Maple dense={dense} variant={kasuVariant} />;
+      return <MapleCard card={card} v={v} />;
     case 11:
-      return <Willow dense={dense} variant={kasuVariant} />;
+      return <WillowCard card={card} v={v} />;
     case 12:
-      return <Paulownia dense={dense} variant={kasuVariant} />;
+      return <PaulowniaCard card={card} v={v} />;
     default:
       return null;
   }
 }
 
-function FeatureMotif({ card }: { card: HanafudaCard }) {
-  if (card.kind === "ribbon") {
-    return <Ribbon ribbon={card.ribbon ?? "plain"} poetry={card.ribbon === "red-poetry"} />;
-  }
+type CardProps = { card: HanafudaCard; v: number };
 
-  switch (card.name) {
-    case "鶴":
-      return <Crane />;
-    case "鶯":
-      return <Warbler />;
-    case "幕":
-      return <Curtain />;
-    case "不如帰":
-      return <Cuckoo />;
-    case "八橋":
-      return <Bridge />;
-    case "蝶":
-      return <Butterfly />;
-    case "猪":
-      return <Boar />;
-    case "月":
-      return <Moon />;
-    case "雁":
-      return <Geese />;
-    case "盃":
-      return <SakeCup />;
-    case "鹿":
-      return <Deer />;
-    case "小野道風":
-      return <RainMan />;
-    case "燕":
-      return <Swallow />;
-    case "鳳凰":
-      return <Phoenix />;
-    default:
-      return null;
-  }
-}
+/* ======================================================================
+   Shared pieces
+   ====================================================================== */
 
-/* ---------- month flora ---------- */
-
-function Pine({ dense, variant }: { dense: boolean; variant: number }) {
+function Tanzaku({
+  color,
+  text,
+  x = 26,
+  y = 14,
+  rot = -14,
+}: {
+  color: string;
+  text?: string;
+  x?: number;
+  y?: number;
+  rot?: number;
+}) {
   return (
-    <g>
-      <path
-        d="M12 92 C20 70 22 55 28 40 C24 52 18 62 14 78 Z"
-        fill="#2f5c3a"
-      />
-      <path
-        d="M28 40 C34 28 40 34 36 48 C42 36 48 42 44 58 C50 48 54 56 50 70 C46 82 38 90 28 92 Z"
-        fill="#3f7348"
-      />
-      <path d="M34 55 L36 92" stroke="#5a3a22" strokeWidth="1.6" />
-      {dense && variant % 2 === 1 && (
-        <path d="M48 92 C52 78 56 68 60 58 C58 70 54 80 50 92 Z" fill="#2f5c3a" />
-      )}
-      <circle cx="22" cy="58" r="1.4" fill="#c45c5c" />
-      <circle cx="40" cy="50" r="1.3" fill="#c45c5c" />
-      {dense && <circle cx="46" cy="66" r="1.2" fill="#c45c5c" />}
+    <g transform={`translate(${x} ${y}) rotate(${rot})`}>
+      <path d="M0 0 H13 V44 L6.5 50 L0 44 Z" fill={color} {...line} strokeWidth={1.1} />
+      <path d="M1.8 2 V42" stroke={WHITE} strokeWidth="0.8" opacity="0.35" />
+      {text &&
+        [...text].map((ch, i) => (
+          <text
+            key={i}
+            x="6.5"
+            y={9 + i * 7.6}
+            textAnchor="middle"
+            fontSize="7"
+            fontWeight="700"
+            fill={INK}
+            fontFamily="'Shippori Mincho', serif"
+          >
+            {ch}
+          </text>
+        ))}
     </g>
   );
 }
 
-function Plum({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M18 92 C22 70 20 52 16 40" stroke="#5a3a22" strokeWidth="2" fill="none" />
-      <path d="M18 60 C28 52 36 58 42 48" stroke="#5a3a22" strokeWidth="1.4" fill="none" />
-      <Blossom cx={20} cy={48} r={7} color="#e8a0b8" />
-      <Blossom cx={34} cy={42} r={6} color="#f0b8c8" />
-      <Blossom cx={28} cy={62} r={5.5} color="#d988a4" />
-      {(dense || variant > 1) && <Blossom cx={48} cy={56} r={5} color="#e8a0b8" />}
-      {dense && variant % 2 === 0 && <Blossom cx={42} cy={74} r={4.5} color="#f0b8c8" />}
-    </g>
-  );
-}
-
-function Cherry({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M14 92 C24 74 30 58 38 44" stroke="#6b4428" strokeWidth="1.8" fill="none" />
-      <path d="M38 52 C46 46 52 52 58 44" stroke="#6b4428" strokeWidth="1.2" fill="none" />
-      <Blossom cx={30} cy={50} r={7} color="#f4c2d0" />
-      <Blossom cx={44} cy={40} r={6.5} color="#ffd6e2" />
-      <Blossom cx={52} cy={56} r={5.5} color="#efadc0" />
-      {dense && <Blossom cx={24} cy={68} r={5} color="#f4c2d0" />}
-      {dense && variant % 2 === 1 && <Blossom cx={40} cy={72} r={4.5} color="#ffd6e2" />}
-      <circle cx={18} cy={36} r={1.2} fill="#f4c2d0" opacity="0.7" />
-      <circle cx={58} cy={30} r={1} fill="#f4c2d0" opacity="0.55" />
-    </g>
-  );
-}
-
-function Wisteria({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M10 28 H60" stroke="#4a6b3a" strokeWidth="2" />
-      <WisteriaHang x={18} />
-      <WisteriaHang x={32} />
-      <WisteriaHang x={46} />
-      {dense && <WisteriaHang x={24} offset={6} />}
-      {dense && variant % 2 === 0 && <WisteriaHang x={40} offset={4} />}
-    </g>
-  );
-}
-
-function WisteriaHang({ x, offset = 0 }: { x: number; offset?: number }) {
-  return (
-    <g transform={`translate(${x} ${28 + offset})`}>
-      <path d="M0 0 C-2 18 2 34 0 48" stroke="#6b8f5a" strokeWidth="1.2" fill="none" />
-      {[8, 16, 24, 32, 40].map((y, i) => (
-        <ellipse
-          key={y}
-          cx={i % 2 === 0 ? -3 : 3}
-          cy={y}
-          rx={4 - i * 0.35}
-          ry={3}
-          fill={i % 2 === 0 ? "#8b6bb5" : "#a789cc"}
-        />
-      ))}
-    </g>
-  );
-}
-
-function Iris({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M22 92 L22 48" stroke="#3d6b45" strokeWidth="1.6" />
-      <path d="M22 70 C10 58 12 48 22 52 C32 48 34 58 22 70" fill="#5a7ec2" />
-      <path d="M22 58 C16 46 20 40 22 44 C24 40 28 46 22 58" fill="#7b96d6" />
-      <path d="M18 92 C8 80 10 70 18 74" fill="#4f7a55" />
-      <path d="M26 92 C36 80 34 70 26 74" fill="#4f7a55" />
-      {(dense || variant > 1) && (
-        <g transform="translate(24 4)">
-          <path d="M22 88 L22 52" stroke="#3d6b45" strokeWidth="1.3" />
-          <path d="M22 68 C12 58 14 50 22 54 C30 50 32 58 22 68" fill="#6a8ad0" />
-        </g>
-      )}
-    </g>
-  );
-}
-
-function Peony({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M34 92 L34 62" stroke="#3f6b3a" strokeWidth="2" />
-      <path d="M34 78 C20 70 18 62 28 64" fill="#4f7a4a" />
-      <path d="M34 78 C48 70 50 62 40 64" fill="#4f7a4a" />
-      <FlowerBurst cx={34} cy={48} color="#e89bb0" />
-      {dense && variant % 2 === 1 && (
-        <g transform="translate(14 18) scale(0.7)">
-          <FlowerBurst cx={34} cy={48} color="#f0b0c0" />
-        </g>
-      )}
-    </g>
-  );
-}
-
-function Clover({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M16 92 C24 70 28 58 40 46" stroke="#5a7a40" strokeWidth="1.4" fill="none" />
-      <path d="M28 70 C36 64 44 70 50 60" stroke="#5a7a40" strokeWidth="1.1" fill="none" />
-      <Blossom cx={40} cy={48} r={4} color="#e8a0b4" petals={4} />
-      <Blossom cx={50} cy={58} r={3.5} color="#f0b8c4" petals={4} />
-      <Blossom cx={32} cy={62} r={3.2} color="#d988a0" petals={4} />
-      {dense && <Blossom cx={22} cy={74} r={3} color="#e8a0b4" petals={4} />}
-      {dense && variant % 2 === 0 && <Blossom cx={44} cy={72} r={2.8} color="#f0b8c4" petals={4} />}
-    </g>
-  );
-}
-
-function Susuki({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M20 92 L28 30" stroke="#c4a35a" strokeWidth="1.4" />
-      <path d="M32 92 L36 38" stroke="#d4b56a" strokeWidth="1.2" />
-      <path d="M44 92 L40 34" stroke="#b8953d" strokeWidth="1.3" />
-      <ellipse cx="28" cy="28" rx="5" ry="10" fill="#e6c97a" opacity="0.85" transform="rotate(-18 28 28)" />
-      <ellipse cx="36" cy="34" rx="4.5" ry="9" fill="#d4b56a" opacity="0.8" transform="rotate(8 36 34)" />
-      <ellipse cx="40" cy="30" rx="5" ry="10" fill="#e6c97a" opacity="0.75" transform="rotate(16 40 30)" />
-      {dense && (
-        <path d="M52 92 L48 42" stroke="#c4a35a" strokeWidth="1.1" />
-      )}
-      {dense && variant % 2 === 1 && (
-        <ellipse cx="48" cy="38" rx="4" ry="8" fill="#d4b56a" opacity="0.7" transform="rotate(20 48 38)" />
-      )}
-    </g>
-  );
-}
-
-function Chrysanthemum({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M34 92 L34 58" stroke="#4a6b3a" strokeWidth="1.8" />
-      <path d="M34 74 C22 68 20 60 30 62" fill="#5a7a4a" />
-      <FlowerBurst cx={34} cy={46} color="#e6c35a" spikes />
-      {dense && variant % 2 === 0 && (
-        <g transform="translate(-14 16) scale(0.65)">
-          <FlowerBurst cx={34} cy={46} color="#f0d078" spikes />
-        </g>
-      )}
-    </g>
-  );
-}
-
-function Maple({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M18 92 C26 74 30 60 40 48" stroke="#6b3a22" strokeWidth="1.5" fill="none" />
-      <MapleLeaf cx={36} cy={46} color="#c45c3a" rot={-20} />
-      <MapleLeaf cx={48} cy={54} color="#d4783a" rot={15} />
-      <MapleLeaf cx={28} cy={60} color="#a83e28" rot={-5} />
-      {dense && <MapleLeaf cx={42} cy={70} color="#c45c3a" rot={25} />}
-      {dense && variant % 2 === 1 && <MapleLeaf cx={54} cy={66} color="#e09048" rot={-10} />}
-    </g>
-  );
-}
-
-function Willow({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M36 18 C36 18 34 92 34 92" stroke="#5a3a22" strokeWidth="2" />
-      {[0, 1, 2, 3].map((i) => (
-        <path
-          key={i}
-          d={`M36 24 C${20 - i * 4} ${40 + i * 10} ${18 - i * 3} ${70 + i * 4} ${22 - i * 2} 92`}
-          stroke="#5f8a4a"
-          strokeWidth="1.1"
-          fill="none"
-        />
-      ))}
-      {[0, 1, 2].map((i) => (
-        <path
-          key={`r${i}`}
-          d={`M36 28 C${48 + i * 4} ${42 + i * 10} ${52 + i * 3} ${68 + i * 5} ${50 + i * 2} 92`}
-          stroke="#6f9a58"
-          strokeWidth="1.1"
-          fill="none"
-        />
-      ))}
-      {dense && variant % 2 === 0 && (
-        <path d="M36 40 C12 55 14 78 20 92" stroke="#5f8a4a" strokeWidth="1" fill="none" />
-      )}
-    </g>
-  );
-}
-
-function Paulownia({ dense, variant }: { dense: boolean; variant: number }) {
-  return (
-    <g>
-      <path d="M34 92 L34 50" stroke="#4a6b3a" strokeWidth="2" />
-      <path d="M34 70 C18 62 16 52 28 54" fill="#5a7a4a" />
-      <path d="M34 70 C50 62 52 52 40 54" fill="#5a7a4a" />
-      <Blossom cx={34} cy={42} r={6} color="#9b7eb8" />
-      <Blossom cx={24} cy={52} r={4.5} color="#b598d0" />
-      <Blossom cx={44} cy={52} r={4.5} color="#b598d0" />
-      {dense && <Blossom cx={34} cy={60} r={4} color="#8a6aa8" />}
-      {dense && variant >= 2 && <Blossom cx={18} cy={66} r={3.5} color="#9b7eb8" />}
-      {dense && variant >= 3 && <Blossom cx={50} cy={66} r={3.5} color="#9b7eb8" />}
-    </g>
-  );
-}
-
-/* ---------- helpers ---------- */
-
-function Blossom({
+function Flower5({
   cx,
   cy,
   r,
-  color,
-  petals = 5,
+  fill,
+  center = YELLOW,
+  rot = 0,
 }: {
   cx: number;
   cy: number;
   r: number;
-  color: string;
-  petals?: number;
-}) {
-  const nodes = Array.from({ length: petals }, (_, i) => {
-    const a = (Math.PI * 2 * i) / petals - Math.PI / 2;
-    return (
-      <ellipse
-        key={i}
-        cx={cx + Math.cos(a) * r * 0.55}
-        cy={cy + Math.sin(a) * r * 0.55}
-        rx={r * 0.55}
-        ry={r * 0.38}
-        transform={`rotate(${(360 / petals) * i} ${cx + Math.cos(a) * r * 0.55} ${cy + Math.sin(a) * r * 0.55})`}
-        fill={color}
-      />
-    );
-  });
-  return (
-    <g>
-      {nodes}
-      <circle cx={cx} cy={cy} r={r * 0.28} fill="#f5e6a0" />
-    </g>
-  );
-}
-
-function FlowerBurst({
-  cx,
-  cy,
-  color,
-  spikes,
-}: {
-  cx: number;
-  cy: number;
-  color: string;
-  spikes?: boolean;
-}) {
-  const count = spikes ? 12 : 8;
-  return (
-    <g>
-      {Array.from({ length: count }, (_, i) => {
-        const a = (Math.PI * 2 * i) / count;
-        const x = cx + Math.cos(a) * 10;
-        const y = cy + Math.sin(a) * 10;
-        return (
-          <ellipse
-            key={i}
-            cx={x}
-            cy={y}
-            rx={spikes ? 3.2 : 5}
-            ry={spikes ? 8 : 5.5}
-            transform={`rotate(${(360 / count) * i} ${x} ${y})`}
-            fill={color}
-          />
-        );
-      })}
-      <circle cx={cx} cy={cy} r={4} fill="#f7e7a0" />
-    </g>
-  );
-}
-
-function MapleLeaf({
-  cx,
-  cy,
-  color,
-  rot,
-}: {
-  cx: number;
-  cy: number;
-  color: string;
-  rot: number;
+  fill: string;
+  center?: string;
+  rot?: number;
 }) {
   return (
     <g transform={`translate(${cx} ${cy}) rotate(${rot})`}>
-      <path
-        d="M0 8 L-3 2 L-8 2 L-4 -2 L-6 -8 L0 -4 L6 -8 L4 -2 L8 2 L3 2 Z"
-        fill={color}
-      />
-      <path d="M0 8 L0 -2" stroke="#6b2a18" strokeWidth="0.6" />
+      {Array.from({ length: 5 }, (_, i) => (
+        <circle
+          key={i}
+          cx={Math.cos((i * 2 * Math.PI) / 5 - Math.PI / 2) * r * 0.58}
+          cy={Math.sin((i * 2 * Math.PI) / 5 - Math.PI / 2) * r * 0.58}
+          r={r * 0.5}
+          fill={fill}
+          {...line}
+          strokeWidth={0.7}
+        />
+      ))}
+      <circle r={r * 0.26} fill={center} stroke={INK} strokeWidth={0.5} />
     </g>
   );
 }
 
-function Ribbon({
-  ribbon,
-  poetry,
+function Leaf({
+  x,
+  y,
+  len,
+  width,
+  rot,
+  fill = GREEN,
 }: {
-  ribbon: NonNullable<HanafudaCard["ribbon"]>;
-  poetry: boolean;
+  x: number;
+  y: number;
+  len: number;
+  width: number;
+  rot: number;
+  fill?: string;
 }) {
-  const fill =
-    ribbon === "blue" ? "#3d5a80" : ribbon === "red-poetry" ? "#b01e2e" : "#c45c3a";
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${rot})`}>
+      <path
+        d={`M0 0 C${width} ${-len * 0.3} ${width * 0.6} ${-len * 0.8} 0 ${-len} C${-width * 0.6} ${-len * 0.8} ${-width} ${-len * 0.3} 0 0 Z`}
+        fill={fill}
+        {...line}
+        strokeWidth={0.7}
+      />
+      <path d={`M0 0 L0 ${-len * 0.9}`} stroke={INK} strokeWidth="0.45" opacity="0.7" />
+    </g>
+  );
+}
+
+function Branch({ d, width = 2.6, color = INK }: { d: string; width?: number; color?: string }) {
+  return <path d={d} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />;
+}
+
+function SkyBand({ y, color, wave = true }: { y: number; color: string; wave?: boolean }) {
+  return wave ? (
+    <path
+      d={`M0 0 H70 V${y} C58 ${y + 5} 46 ${y - 4} 35 ${y + 2} C24 ${y + 7} 12 ${y - 3} 0 ${y + 3} Z`}
+      fill={color}
+    />
+  ) : (
+    <rect x="0" y="0" width="70" height={y} fill={color} />
+  );
+}
+
+/* ======================================================================
+   1月 松
+   ====================================================================== */
+
+function PineTuft({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <path d="M-12 2 C-10 -9 10 -9 12 2 C6 -1 -6 -1 -12 2 Z" fill={GREEN} {...line} />
+      {[-9, -5, -1.5, 1.5, 5, 9].map((dx) => (
+        <path key={dx} d={`M0 1 L${dx} ${-6 + Math.abs(dx) * 0.35}`} stroke={DEEP_GREEN} strokeWidth="0.6" />
+      ))}
+    </g>
+  );
+}
+
+function PineTree({ flip = false }: { flip?: boolean }) {
+  return (
+    <g transform={flip ? "translate(70 0) scale(-1 1)" : undefined}>
+      <path
+        d="M14 98 C18 84 14 74 22 64 C28 56 26 48 34 40 C38 36 44 34 48 30"
+        fill="none"
+        stroke={BROWN}
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M14 98 C18 84 14 74 22 64 C28 56 26 48 34 40 C38 36 44 34 48 30"
+        fill="none"
+        stroke={INK}
+        strokeWidth="0.9"
+        strokeDasharray="3 5"
+      />
+      <path d="M22 64 C14 60 10 56 6 50" fill="none" stroke={BROWN} strokeWidth="2.6" strokeLinecap="round" />
+      <PineTuft x={48} y={30} s={1.2} />
+      <PineTuft x={30} y={44} s={1.1} />
+      <PineTuft x={8} y={50} s={1} />
+      <PineTuft x={50} y={48} s={0.95} />
+      <PineTuft x={24} y={68} s={1.05} />
+    </g>
+  );
+}
+
+function PineCard({ card, v }: CardProps) {
+  if (card.kind === "bright") {
+    return (
+      <g>
+        <circle cx="44" cy="30" r="20" fill={RED} {...line} />
+        <g transform="translate(0 20) scale(1 0.8)">
+          <PineTuft x={12} y={90} s={1.2} />
+          <PineTuft x={56} y={96} s={1.1} />
+        </g>
+        <Crane />
+      </g>
+    );
+  }
+  if (card.kind === "ribbon") {
+    return (
+      <g>
+        <SkyBand y={12} color={RED} />
+        <PineTree />
+        <Tanzaku color={RED} text="あかよろし" x={26} y={22} rot={-10} />
+      </g>
+    );
+  }
   return (
     <g>
-      <path
-        d="M22 18 C28 28 26 48 24 70 C30 58 36 48 42 40 C40 56 38 72 40 88 L28 88 C30 72 28 52 22 18 Z"
-        fill={fill}
-        opacity="0.92"
-      />
-      <path
-        d="M24 22 C30 34 30 50 28 66"
-        stroke="#fff8ea"
-        strokeWidth="1"
-        opacity="0.35"
-        fill="none"
-      />
-      {poetry && (
-        <>
-          <text
-            x="30"
-            y="48"
-            fontSize="5"
-            fill="#f7e7c8"
-            opacity="0.9"
-            transform="rotate(-12 30 48)"
-          >
-            あ
-          </text>
-          <text
-            x="32"
-            y="56"
-            fontSize="5"
-            fill="#f7e7c8"
-            opacity="0.9"
-            transform="rotate(-12 32 56)"
-          >
-            か
-          </text>
-        </>
-      )}
+      <SkyBand y={v === 2 ? 22 : 16} color={RED} />
+      <PineTree flip={v === 3} />
     </g>
   );
 }
-
-/* ---------- special motifs ---------- */
 
 function Crane() {
   return (
-    <g transform="translate(8 8)">
-      <path d="M18 42 C10 28 22 12 34 18 C42 8 52 16 46 28 C58 30 54 46 42 42 C36 52 24 52 18 42 Z" fill="#f8f4ea" stroke="#2a2a2a" strokeWidth="0.8" />
-      <path d="M34 20 L40 8" stroke="#c45c3a" strokeWidth="1.2" />
-      <circle cx="30" cy="22" r="1.1" fill="#1c1c1c" />
-      <path d="M42 42 L50 58" stroke="#2a2a2a" strokeWidth="1" />
+    <g>
+      {/* legs */}
+      <path d="M30 70 L27 90 M34 70 L37 88" stroke={INK} strokeWidth="1.2" strokeLinecap="round" />
+      {/* tail */}
+      <path d="M40 60 C50 62 56 70 58 78 C52 74 46 72 38 70 Z" fill={INK} />
+      {/* body */}
+      <path d="M18 58 C20 48 34 46 42 54 C46 60 40 70 30 70 C22 70 17 64 18 58 Z" fill={WHITE} {...line} />
+      <path d="M24 60 C30 56 36 58 40 62" fill="none" stroke={INK} strokeWidth="0.6" />
+      {/* neck */}
+      <path d="M22 54 C18 44 16 36 20 28" fill="none" stroke={INK} strokeWidth="3.2" strokeLinecap="round" />
+      {/* head */}
+      <ellipse cx="21" cy="26" rx="4" ry="3.2" fill={WHITE} {...line} />
+      <circle cx="21.5" cy="23.6" r="1.6" fill={RED} />
+      <path d="M17.5 26.5 L8 29" stroke={YELLOW} strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M17.5 26.5 L8 29" stroke={INK} strokeWidth="0.4" />
+      <circle cx="20" cy="25.8" r="0.6" fill={INK} />
+    </g>
+  );
+}
+
+/* ======================================================================
+   2月 梅
+   ====================================================================== */
+
+function PlumBranch({ v }: { v: number }) {
+  const blossoms: [number, number, number, string][] = [
+    [20, 34, 5, RED],
+    [34, 26, 4.5, WHITE],
+    [46, 40, 5, RED],
+    [26, 54, 4.5, RED],
+    [52, 60, 4, WHITE],
+    [16, 72, 4.5, RED],
+    [40, 76, 4, RED],
+  ];
+  return (
+    <g>
+      <Branch d="M8 98 C12 80 10 70 18 60 C24 52 22 42 30 30 M18 60 C28 58 36 52 48 42 M30 30 C36 22 42 18 50 14 M24 76 C32 74 40 70 50 62" width={3} />
+      {blossoms
+        .filter((_, i) => v !== 3 || i % 3 !== 1)
+        .map(([x, y, r, c], i) => (
+          <Flower5 key={i} cx={x} cy={y} r={r} fill={c} center={c === WHITE ? RED : YELLOW} rot={i * 17} />
+        ))}
+    </g>
+  );
+}
+
+function PlumCard({ card, v }: CardProps) {
+  return (
+    <g>
+      <SkyBand y={v === 2 ? 20 : 14} color={RED} />
+      <PlumBranch v={v} />
+      {card.kind === "animal" && <Warbler />}
+      {card.kind === "ribbon" && <Tanzaku color={RED} text="あかよろし" x={30} y={22} rot={10} />}
     </g>
   );
 }
 
 function Warbler() {
   return (
-    <g transform="translate(28 20)">
-      <ellipse cx="12" cy="20" rx="11" ry="8" fill="#6f9a3e" />
-      <ellipse cx="22" cy="16" rx="6" ry="5" fill="#7eaa48" />
-      <path d="M26 16 L32 14" stroke="#c45c3a" strokeWidth="1.2" />
-      <circle cx="24" cy="15" r="0.9" fill="#1c1c1c" />
-      <path d="M6 18 C0 10 4 6 10 12" fill="#5f8a34" />
-      <ellipse cx="10" cy="24" rx="3" ry="2" fill="#d8c078" />
+    <g transform="translate(30 42)">
+      <path d="M0 10 C2 2 12 -2 20 2 C24 4 26 8 24 12 C18 18 6 18 0 10 Z" fill="#8a9a2a" {...line} />
+      <path d="M2 10 C-4 12 -8 16 -10 20 C-4 18 0 16 4 14 Z" fill="#6c7a20" {...line} strokeWidth={0.7} />
+      <circle cx="21" cy="5" r="4.6" fill="#9aaa34" {...line} />
+      <path d="M25 5 L30 4.5 L25 6.6 Z" fill={INK} />
+      <circle cx="22" cy="4.4" r="0.8" fill={INK} />
+      <path d="M8 8 C12 6 16 7 18 10" fill="none" stroke={INK} strokeWidth="0.6" />
+      <path d="M10 16 L9 22 M14 16 L15 22" stroke={INK} strokeWidth="0.9" />
+    </g>
+  );
+}
+
+/* ======================================================================
+   3月 桜
+   ====================================================================== */
+
+function CherryCloud({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  const spots: [number, number][] = [
+    [0, 0],
+    [-8, 3],
+    [8, 3],
+    [-4, -5],
+    [5, -5],
+    [0, 6],
+  ];
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      {spots.map(([dx, dy], i) => (
+        <Flower5 key={i} cx={dx} cy={dy} r={5} fill={i % 2 ? WHITE : PINK} center={RED} rot={i * 23} />
+      ))}
+    </g>
+  );
+}
+
+function CherryCard({ card, v }: CardProps) {
+  if (card.kind === "bright") {
+    return (
+      <g>
+        <SkyBand y={10} color={RED} />
+        <Branch d="M0 30 C14 26 24 20 34 12 M40 30 C50 22 60 20 70 22" width={2.4} />
+        <CherryCloud x={14} y={18} s={0.9} />
+        <CherryCloud x={52} y={16} s={0.9} />
+        <CherryCloud x={34} y={30} s={0.8} />
+        <Curtain />
+      </g>
+    );
+  }
+  return (
+    <g>
+      <SkyBand y={v === 3 ? 18 : 12} color={RED} />
+      <Branch d="M4 98 C10 80 16 70 22 58 C28 46 32 38 40 30 M22 58 C34 56 44 50 56 44 M40 30 C48 24 54 22 62 18" width={2.8} />
+      <CherryCloud x={40} y={30} />
+      <CherryCloud x={20} y={58} s={0.95} />
+      {v !== 2 && <CherryCloud x={54} y={46} s={0.85} />}
+      {card.kind === "ribbon" ? (
+        <Tanzaku color={RED} text="みよしの" x={30} y={50} rot={-12} />
+      ) : (
+        <CherryCloud x={24} y={82} s={0.9} />
+      )}
     </g>
   );
 }
@@ -547,122 +379,547 @@ function Warbler() {
 function Curtain() {
   return (
     <g>
-      <rect x="14" y="16" width="42" height="6" rx="1" fill="#b01e2e" />
-      <path d="M16 22 C20 40 18 60 16 78" fill="#c43a3a" />
-      <path d="M28 22 C32 42 30 62 28 80" fill="#9a1f2b" />
-      <path d="M40 22 C44 40 42 60 40 78" fill="#c43a3a" />
-      <path d="M52 22 C56 42 54 62 52 80" fill="#9a1f2b" />
-      <circle cx="22" cy="34" r="2" fill="#d4c08a" />
-      <circle cx="34" cy="38" r="2" fill="#d4c08a" />
-      <circle cx="46" cy="34" r="2" fill="#d4c08a" />
+      <path d="M0 42 H70" stroke={INK} strokeWidth="2.2" />
+      <path
+        d="M0 43 C10 50 18 50 23 44 C28 50 42 50 47 44 C52 50 60 50 70 43 V98 H0 Z"
+        fill={RED}
+        {...line}
+      />
+      {/* white band with cherry crests */}
+      <path d="M0 64 C12 66 24 62 35 64 C46 66 58 62 70 64 V76 C58 74 46 78 35 76 C24 74 12 78 0 76 Z" fill={WHITE} {...line} />
+      {[12, 35, 58].map((x) => (
+        <Flower5 key={x} cx={x} cy={70} r={4} fill={RED} center={WHITE} />
+      ))}
+      {[10, 26, 44, 60].map((x) => (
+        <path key={x} d={`M${x} 50 C${x + 2} 60 ${x - 2} 80 ${x + 1} 96`} fill="none" stroke={DEEP_RED} strokeWidth="1" />
+      ))}
+      {[23, 47].map((x) => (
+        <g key={x}>
+          <path d={`M${x} 44 L${x} 52`} stroke={INK} strokeWidth="1" />
+          <circle cx={x} cy={54} r="2.2" fill={YELLOW} {...line} strokeWidth={0.6} />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/* ======================================================================
+   4月 藤
+   ====================================================================== */
+
+function WisteriaDrop({ x, y, len }: { x: number; y: number; len: number }) {
+  const count = Math.round(len / 5);
+  return (
+    <g>
+      <path d={`M${x} ${y} C${x + 2} ${y + len * 0.4} ${x - 2} ${y + len * 0.7} ${x} ${y + len}`} fill="none" stroke={INK} strokeWidth="0.9" />
+      {Array.from({ length: count }, (_, i) => {
+        const t = i / count;
+        const r = 3.2 * (1 - t * 0.55);
+        return (
+          <g key={i}>
+            <ellipse cx={x - r * 0.6} cy={y + 3 + i * 5} rx={r} ry={r * 0.8} fill={PURPLE} {...line} strokeWidth={0.5} />
+            <ellipse cx={x + r * 0.6} cy={y + 5 + i * 5} rx={r * 0.9} ry={r * 0.75} fill="#7d5bb0" {...line} strokeWidth={0.5} />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+function WisteriaCard({ card, v }: CardProps) {
+  const drops: [number, number, number][] =
+    card.kind === "animal"
+      ? [
+          [10, 8, 42],
+          [24, 8, 26],
+        ]
+      : [
+          [14, 8, 44],
+          [30, 8, 54],
+          [48, 8, 40],
+          [60, 8, 30],
+        ];
+  return (
+    <g>
+      {card.kind === "animal" && (
+        <>
+          <rect x="0" y="0" width="70" height="100" fill="#f2d98a" />
+          <circle cx="48" cy="26" r="12" fill={RED} {...line} />
+          <circle cx="53" cy="22" r="10.5" fill="#f2d98a" />
+        </>
+      )}
+      <Branch d="M0 7 C18 11 40 3 70 8" width={3} />
+      {drops.map(([x, y, len], i) => (
+        <WisteriaDrop key={i} x={x} y={y} len={v === 3 && i === 1 ? len - 10 : len} />
+      ))}
+      <Leaf x={6} y={98} len={22} width={5} rot={20} />
+      <Leaf x={20} y={98} len={18} width={4} rot={-10} />
+      <Leaf x={64} y={98} len={20} width={5} rot={-24} />
+      {card.kind === "animal" && <Cuckoo />}
+      {card.kind === "ribbon" && <Tanzaku color={RED} x={30} y={46} rot={-8} />}
     </g>
   );
 }
 
 function Cuckoo() {
   return (
-    <g transform="translate(30 22)">
-      <ellipse cx="10" cy="18" rx="10" ry="7" fill="#4a5560" />
-      <ellipse cx="18" cy="14" rx="5.5" ry="4.5" fill="#5a6570" />
-      <path d="M22 14 L28 12" stroke="#c4a35a" strokeWidth="1.1" />
-      <circle cx="20" cy="13" r="0.8" fill="#fff" />
-      <path d="M2 16 C-4 8 0 4 6 10" fill="#3a4550" />
+    <g transform="translate(18 44) rotate(-12)">
+      <path d="M0 10 C8 2 22 0 32 6 C24 10 14 14 0 10 Z" fill={INK} />
+      <path d="M8 6 C14 -8 26 -12 34 -10 C26 -4 20 2 14 8 Z" fill={INK} />
+      <path d="M10 10 C16 18 24 22 34 22 C26 16 20 12 16 10 Z" fill={INK} />
+      <path d="M32 6 C36 5 38 6 40 7 L34 8 Z" fill={INK} />
+      <circle cx="31" cy="5.6" r="0.7" fill={WHITE} />
+      <path d="M0 10 L-8 8 L-6 12 Z" fill={INK} />
+      <path d="M18 9 C22 11 26 11 30 9" fill="none" stroke={WHITE} strokeWidth="0.5" opacity="0.7" />
+    </g>
+  );
+}
+
+/* ======================================================================
+   5月 菖蒲
+   ====================================================================== */
+
+function IrisFlower({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <path d="M0 0 C-10 -2 -12 8 -6 12 C-4 8 -2 4 0 2 Z" fill={PURPLE} {...line} />
+      <path d="M0 0 C10 -2 12 8 6 12 C4 8 2 4 0 2 Z" fill={PURPLE} {...line} />
+      <path d="M0 2 C-4 -6 -2 -12 0 -14 C2 -12 4 -6 0 2 Z" fill="#7d5bb0" {...line} />
+      <path d="M-5 5 L-3 3 M5 5 L3 3" stroke={YELLOW} strokeWidth="1.3" />
+      <path d="M0 2 L0 30" stroke={DEEP_GREEN} strokeWidth="1.4" />
+    </g>
+  );
+}
+
+function IrisCard({ card, v }: CardProps) {
+  return (
+    <g>
+      {[8, 16, 26, 44, 54, 62].map((x, i) => (
+        <path
+          key={x}
+          d={`M${x} 100 C${x + (i % 2 ? 4 : -4)} 70 ${x + (i % 2 ? 2 : -2)} 50 ${x + (i % 2 ? 8 : -6)} ${28 + (i % 3) * 6} C${x + (i % 2 ? 4 : -2)} 52 ${x + 3} 76 ${x + 4} 100 Z`}
+          fill={GREEN}
+          {...line}
+          strokeWidth={0.7}
+        />
+      ))}
+      <IrisFlower x={20} y={30} s={1.1} />
+      <IrisFlower x={48} y={24} s={1.05} />
+      {v !== 3 && <IrisFlower x={34} y={46} s={0.9} />}
+      {card.kind === "animal" && <Bridge />}
+      {card.kind === "ribbon" && <Tanzaku color={RED} x={28} y={48} rot={12} />}
     </g>
   );
 }
 
 function Bridge() {
+  const planks: [number, number][] = [
+    [0, 66],
+    [22, 76],
+    [44, 64],
+  ];
   return (
     <g>
-      <path d="M10 70 C24 48 46 48 60 70" fill="none" stroke="#6b4428" strokeWidth="3" />
-      <path d="M14 68 L14 78" stroke="#6b4428" strokeWidth="2" />
-      <path d="M35 52 L35 62" stroke="#6b4428" strokeWidth="2" />
-      <path d="M56 68 L56 78" stroke="#6b4428" strokeWidth="2" />
-      <path d="M8 78 H62" stroke="#3d6b9a" strokeWidth="2" opacity="0.55" />
+      <path d="M0 88 C12 84 22 92 35 88 C48 84 58 92 70 88 V100 H0 Z" fill={BLUE} opacity="0.85" />
+      {planks.map(([x, y], i) => (
+        <g key={i}>
+          <path
+            d={`M${x} ${y} L${x + 28} ${y + (i % 2 ? -10 : 10)} L${x + 28} ${y + (i % 2 ? -4 : 16)} L${x} ${y + 6} Z`}
+            fill="#c9974a"
+            {...line}
+          />
+          <path d={`M${x + 4} ${y + 6} V${y + 20} M${x + 24} ${y + (i % 2 ? -3 : 15)} V${y + (i % 2 ? 12 : 28)}`} stroke={INK} strokeWidth="1.4" />
+        </g>
+      ))}
     </g>
   );
 }
 
-function Butterfly() {
+/* ======================================================================
+   6月 牡丹
+   ====================================================================== */
+
+function Peony({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
   return (
-    <g transform="translate(22 18)">
-      <ellipse cx="8" cy="16" rx="8" ry="12" fill="#7b6bb5" transform="rotate(-20 8 16)" />
-      <ellipse cx="24" cy="16" rx="8" ry="12" fill="#9b88d0" transform="rotate(20 24 16)" />
-      <ellipse cx="10" cy="28" rx="5" ry="7" fill="#c4a35a" transform="rotate(-30 10 28)" />
-      <ellipse cx="22" cy="28" rx="5" ry="7" fill="#d4b56a" transform="rotate(30 22 28)" />
-      <rect x="14.5" y="12" width="3" height="22" rx="1.5" fill="#2a2a2a" />
-      <circle cx="10" cy="14" r="1.5" fill="#f0e6a0" />
-      <circle cx="22" cy="14" r="1.5" fill="#f0e6a0" />
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <path d="M-15 2 C-18 -10 -8 -16 0 -12 C8 -16 18 -10 15 2 C12 12 -12 12 -15 2 Z" fill={RED} {...line} />
+      <path d="M-10 0 C-12 -8 -4 -11 0 -8 C4 -11 12 -8 10 0 C8 6 -8 6 -10 0 Z" fill="#e03a33" {...line} strokeWidth={0.7} />
+      <path d="M-5 -1 C-6 -6 -2 -7 0 -5 C2 -7 6 -6 5 -1 C4 2 -4 2 -5 -1 Z" fill={DEEP_RED} {...line} strokeWidth={0.6} />
+      <circle cx="0" cy="-2" r="1.6" fill={YELLOW} />
+    </g>
+  );
+}
+
+function PeonyCard({ card, v }: CardProps) {
+  return (
+    <g>
+      <path d="M35 100 C34 86 36 76 35 64" stroke={INK} strokeWidth="2" fill="none" />
+      <Leaf x={35} y={86} len={22} width={8} rot={-60} fill={DEEP_GREEN} />
+      <Leaf x={35} y={86} len={22} width={8} rot={60} fill={DEEP_GREEN} />
+      <Leaf x={35} y={74} len={18} width={7} rot={-35} fill={GREEN} />
+      <Leaf x={35} y={74} len={18} width={7} rot={35} fill={GREEN} />
+      <Peony x={35} y={62} s={1.35} />
+      {v !== 2 && card.kind === "chaff" && <Peony x={16} y={38} s={0.8} />}
+      {v === 3 && <Peony x={54} y={34} s={0.75} />}
+      {card.kind === "animal" && <Butterflies />}
+      {card.kind === "ribbon" && <Tanzaku color={BLUE} x={28} y={6} rot={-6} />}
+    </g>
+  );
+}
+
+function Butterfly({ x, y, s, rot, wing, spot }: { x: number; y: number; s: number; rot: number; wing: string; spot: string }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`}>
+      <path d="M0 0 C-10 -14 -20 -6 -14 2 C-18 8 -10 14 0 4 Z" fill={wing} {...line} />
+      <path d="M0 0 C10 -14 20 -6 14 2 C18 8 10 14 0 4 Z" fill={wing} {...line} />
+      <circle cx="-9" cy="-4" r="2" fill={spot} stroke={INK} strokeWidth="0.5" />
+      <circle cx="9" cy="-4" r="2" fill={spot} stroke={INK} strokeWidth="0.5" />
+      <path d="M0 -4 V8" stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M0 -4 L-3 -10 M0 -4 L3 -10" stroke={INK} strokeWidth="0.6" />
+    </g>
+  );
+}
+
+function Butterflies() {
+  return (
+    <g>
+      <Butterfly x={20} y={22} s={1.1} rot={-18} wing={BLUE} spot={YELLOW} />
+      <Butterfly x={50} y={32} s={0.95} rot={16} wing={YELLOW} spot={RED} />
+    </g>
+  );
+}
+
+/* ======================================================================
+   7月 萩
+   ====================================================================== */
+
+function CloverArch({ d, dots }: { d: string; dots: [number, number][] }) {
+  return (
+    <g>
+      <path d={d} fill="none" stroke={DEEP_RED} strokeWidth="1.3" strokeLinecap="round" />
+      {dots.map(([x, y], i) => (
+        <g key={i}>
+          <ellipse cx={x} cy={y} rx="2.6" ry="1.7" fill={i % 3 === 0 ? GREEN : RED} {...line} strokeWidth={0.5} transform={`rotate(${i * 40} ${x} ${y})`} />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+function CloverCard({ card, v }: CardProps) {
+  return (
+    <g>
+      <SkyBand y={v === 3 ? 16 : 10} color={RED} wave={false} />
+      <CloverArch
+        d="M8 100 C10 70 22 40 48 20"
+        dots={[
+          [14, 74],
+          [18, 62],
+          [22, 52],
+          [28, 42],
+          [34, 34],
+          [42, 26],
+          [48, 20],
+        ]}
+      />
+      <CloverArch
+        d="M24 100 C30 76 44 56 64 44"
+        dots={[
+          [30, 80],
+          [36, 68],
+          [44, 58],
+          [52, 52],
+          [60, 46],
+        ]}
+      />
+      {v !== 2 && (
+        <CloverArch
+          d="M60 100 C54 80 44 66 30 60"
+          dots={[
+            [56, 86],
+            [50, 76],
+            [42, 68],
+            [34, 62],
+          ]}
+        />
+      )}
+      {card.kind === "chaff" && (
+        <CloverArch
+          d="M2 60 C14 52 24 40 30 24"
+          dots={[
+            [8, 56],
+            [15, 50],
+            [21, 42],
+            [26, 34],
+            [29, 26],
+          ]}
+        />
+      )}
+      {card.kind === "animal" && <Boar />}
+      {card.kind === "ribbon" && <Tanzaku color={RED} x={34} y={26} rot={14} />}
     </g>
   );
 }
 
 function Boar() {
   return (
-    <g transform="translate(16 28)">
-      <ellipse cx="22" cy="24" rx="18" ry="12" fill="#5a4638" />
-      <ellipse cx="38" cy="20" rx="8" ry="7" fill="#6a5648" />
-      <circle cx="42" cy="18" r="1" fill="#1c1c1c" />
-      <path d="M44 22 L50 24" stroke="#3a2a22" strokeWidth="1.5" />
-      <path d="M10 28 L4 34" stroke="#3a2a22" strokeWidth="2" />
-      <path d="M18 34 L14 40" stroke="#3a2a22" strokeWidth="2" />
-      <path d="M28 34 L30 40" stroke="#3a2a22" strokeWidth="2" />
-      <path d="M34 30 L40 36" stroke="#3a2a22" strokeWidth="2" />
+    <g transform="translate(8 56)">
+      <path d="M4 18 C2 6 16 -2 32 0 C44 2 52 8 56 16 L60 18 L56 22 C50 30 34 32 20 30 C10 28 5 24 4 18 Z" fill={BROWN} {...line} />
+      <path d="M8 12 C18 6 34 4 48 10" fill="none" stroke={INK} strokeWidth="1.2" />
+      <path d="M8 18 C18 14 32 14 44 16" fill="none" stroke={INK} strokeWidth="0.6" opacity="0.6" />
+      <circle cx="50" cy="12" r="1" fill={INK} />
+      <path d="M52 20 C55 21 57 19 57 17" fill="none" stroke={WHITE} strokeWidth="1.2" />
+      <path d="M44 6 L46 0 L49 6" fill={BROWN} {...line} strokeWidth={0.7} />
+      <path d="M12 28 L6 38 M22 30 L20 40 M38 30 L42 40 M46 28 L54 36" stroke={INK} strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M4 16 C0 14 -2 16 -2 20" fill="none" stroke={INK} strokeWidth="1" />
     </g>
   );
 }
 
-function Moon() {
+/* ======================================================================
+   8月 芒
+   ====================================================================== */
+
+function Hill({ top = 58 }: { top?: number }) {
   return (
     <g>
-      <circle cx="48" cy="28" r="16" fill="#f7e7a8" opacity="0.25" />
-      <circle cx="48" cy="28" r="13" fill="#f0e2a8" />
-      <circle cx="48" cy="28" r="13" fill="none" stroke="#fff6c8" strokeWidth="1.2" opacity="0.7" />
-      <circle cx="43" cy="25" r="2.2" fill="#e6d48a" opacity="0.45" />
-      <circle cx="52" cy="32" r="1.4" fill="#e6d48a" opacity="0.35" />
+      <path d={`M-4 100 C0 ${top + 8} 20 ${top} 35 ${top} C50 ${top} 70 ${top + 8} 74 100 Z`} fill={INK} />
+      {Array.from({ length: 11 }, (_, i) => {
+        const x = 4 + i * 6;
+        return (
+          <path
+            key={i}
+            d={`M${x} 100 C${x + 1} ${top + 18} ${x + 4} ${top + 6} ${x + 8} ${top - 4}`}
+            fill="none"
+            stroke={WHITE}
+            strokeWidth="0.8"
+            opacity="0.85"
+          />
+        );
+      })}
     </g>
   );
 }
 
-function Geese() {
+function SusukiCard({ card, v }: CardProps) {
+  if (card.kind === "bright") {
+    return (
+      <g>
+        <rect x="0" y="0" width="70" height="100" fill={RED} />
+        <circle cx="35" cy="36" r="22" fill={WHITE} {...line} strokeWidth={1.1} />
+        <Hill top={66} />
+      </g>
+    );
+  }
+  if (card.kind === "animal") {
+    return (
+      <g>
+        <rect x="0" y="0" width="70" height="100" fill={YELLOW} />
+        <Hill top={70} />
+        <Goose x={14} y={20} s={1} />
+        <Goose x={32} y={34} s={0.9} />
+        <Goose x={48} y={16} s={0.85} />
+      </g>
+    );
+  }
   return (
     <g>
-      <Goose x={18} y={28} />
-      <Goose x={32} y={38} />
-      <Goose x={24} y={48} />
+      {v === 3 ? <SkyBand y={34} color={RED} /> : <rect x="0" y="0" width="70" height="40" fill={RED} />}
+      <Hill top={v === 3 ? 48 : 44} />
     </g>
   );
 }
 
-function Goose({ x, y }: { x: number; y: number }) {
+function Goose({ x, y, s }: { x: number; y: number; s: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <path d="M0 8 C4 -2 12 -6 18 -4 C14 0 12 4 12 8 C16 2 24 -2 30 0 C24 6 18 10 10 12 C6 12 2 11 0 8 Z" fill={INK} />
+      <path d="M0 8 C-4 8 -7 9 -9 11 L-2 10 Z" fill={INK} />
+      <path d="M12 12 L16 16" stroke={INK} strokeWidth="1" />
+    </g>
+  );
+}
+
+/* ======================================================================
+   9月 菊
+   ====================================================================== */
+
+function Chrysanthemum({ x, y, r, fill }: { x: number; y: number; r: number; fill: string }) {
+  const count = 16;
   return (
     <g transform={`translate(${x} ${y})`}>
-      <path d="M0 8 C6 0 16 0 20 8" fill="none" stroke="#3a4550" strokeWidth="1.6" />
-      <path d="M20 8 C26 4 30 8 26 12" fill="#4a5560" />
-      <circle cx="28" cy="10" r="0.7" fill="#fff" />
+      {Array.from({ length: count }, (_, i) => {
+        const a = (i * 360) / count;
+        return (
+          <path
+            key={i}
+            d={`M0 0 C${r * 0.22} ${-r * 0.4} ${r * 0.18} ${-r * 0.9} 0 ${-r} C${-r * 0.18} ${-r * 0.9} ${-r * 0.22} ${-r * 0.4} 0 0 Z`}
+            transform={`rotate(${a})`}
+            fill={fill}
+            {...line}
+            strokeWidth={0.5}
+          />
+        );
+      })}
+      <circle r={r * 0.3} fill={fill === YELLOW ? RED : YELLOW} {...line} strokeWidth={0.6} />
+    </g>
+  );
+}
+
+function ChrysanthemumCard({ card, v }: CardProps) {
+  return (
+    <g>
+      <path d="M20 100 C22 84 24 72 22 60 M46 100 C44 86 46 74 50 62" stroke={INK} strokeWidth="1.8" fill="none" />
+      <Leaf x={22} y={86} len={16} width={7} rot={-55} />
+      <Leaf x={46} y={88} len={16} width={7} rot={55} />
+      <Leaf x={24} y={72} len={14} width={6} rot={40} fill={DEEP_GREEN} />
+      <Chrysanthemum x={22} y={52} r={12} fill={YELLOW} />
+      <Chrysanthemum x={50} y={56} r={10} fill={RED} />
+      {v !== 3 && card.kind === "chaff" && <Chrysanthemum x={36} y={28} r={10} fill={v === 2 ? RED : YELLOW} />}
+      {card.kind === "animal" && <SakeCup />}
+      {card.kind === "ribbon" && <Tanzaku color={BLUE} x={28} y={6} rot={-6} />}
     </g>
   );
 }
 
 function SakeCup() {
   return (
-    <g transform="translate(20 30)">
-      <ellipse cx="15" cy="12" rx="14" ry="5" fill="#c4a35a" />
-      <path d="M3 12 L6 36 H24 L27 12" fill="#d4b56a" stroke="#8a7030" strokeWidth="0.8" />
-      <ellipse cx="15" cy="36" rx="9" ry="3" fill="#b8953d" />
-      <ellipse cx="15" cy="12" rx="10" ry="3" fill="#f0e2a8" opacity="0.7" />
+    <g transform="translate(35 26)">
+      <ellipse cx="0" cy="0" rx="20" ry="9" fill={RED} {...line} strokeWidth={1.1} />
+      <ellipse cx="0" cy="-1" rx="16" ry="6.5" fill={DEEP_RED} />
+      <text x="0" y="2.4" textAnchor="middle" fontSize="9" fontWeight="700" fill={YELLOW} fontFamily="'Shippori Mincho', serif">
+        寿
+      </text>
+      <path d="M-8 8 L-6 16 H6 L8 8" fill={RED} {...line} />
+      <path d="M-10 16 H10" stroke={INK} strokeWidth="1.4" />
+    </g>
+  );
+}
+
+/* ======================================================================
+   10月 紅葉
+   ====================================================================== */
+
+function MapleLeaf({ x, y, s, rot, fill }: { x: number; y: number; s: number; rot: number; fill: string }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`}>
+      <path
+        d="M0 10 L-1 4 L-9 6 L-6 1 L-11 -3 L-5 -3 L-6 -10 L-2 -6 L0 -12 L2 -6 L6 -10 L5 -3 L11 -3 L6 1 L9 6 L1 4 Z"
+        fill={fill}
+        {...line}
+        strokeWidth={0.7}
+      />
+      <path d="M0 10 V-8 M0 2 L-7 -2 M0 2 L7 -2" stroke={INK} strokeWidth="0.4" opacity="0.7" />
+    </g>
+  );
+}
+
+function MapleCard({ card, v }: CardProps) {
+  const leaves: [number, number, number, number, string][] = [
+    [18, 16, 1.2, -20, RED],
+    [42, 12, 1.1, 15, RED],
+    [58, 26, 1, 30, YELLOW],
+    [30, 34, 1.15, -5, RED],
+    [12, 44, 1, 20, YELLOW],
+    [52, 48, 1.1, -25, RED],
+    [26, 62, 1, 10, RED],
+    [46, 72, 1.05, -15, YELLOW],
+    [16, 84, 0.95, 25, RED],
+  ];
+  const shown = card.kind === "animal" ? leaves.slice(0, 5) : leaves.filter((_, i) => v !== 3 || i % 4 !== 2);
+  return (
+    <g>
+      <Branch d="M0 22 C14 24 26 18 40 8 M0 50 C12 46 24 40 34 34 M70 40 C60 44 54 50 50 56" width={2.2} />
+      {shown.map(([x, y, s, r, c], i) => (
+        <MapleLeaf key={i} x={x} y={y} s={s} rot={r} fill={c} />
+      ))}
+      {card.kind === "animal" && <Deer />}
+      {card.kind === "ribbon" && <Tanzaku color={BLUE} x={30} y={40} rot={10} />}
     </g>
   );
 }
 
 function Deer() {
   return (
-    <g transform="translate(14 24)">
-      <path d="M18 8 L12 0 M18 8 L22 0 M26 10 L22 0 M26 10 L30 2" stroke="#6b4428" strokeWidth="1.3" fill="none" />
-      <ellipse cx="22" cy="28" rx="16" ry="11" fill="#c48a4a" />
-      <ellipse cx="36" cy="22" rx="7" ry="6" fill="#d4a05a" />
-      <circle cx="39" cy="20" r="1" fill="#1c1c1c" />
-      <path d="M10 34 L6 42 M18 38 L16 46 M28 38 L30 46 M34 32 L40 40" stroke="#6b4428" strokeWidth="1.8" />
+    <g transform="translate(6 46)">
+      <path d="M10 26 C8 16 18 10 32 12 C42 13 48 16 50 22 C50 30 40 34 26 34 C16 34 11 31 10 26 Z" fill="#b8742e" {...line} />
+      {[
+        [20, 20],
+        [28, 18],
+        [36, 22],
+        [24, 27],
+        [40, 28],
+      ].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="1.3" fill={WHITE} />
+      ))}
+      <path d="M44 16 C46 8 50 2 54 0 C58 2 58 8 54 12 C52 14 48 16 44 16 Z" fill="#b8742e" {...line} />
+      <path d="M53 1 L50 -8 L46 -12 M50 -8 L54 -14 M55 1 L60 -8 L64 -10 M60 -8 L58 -14" stroke={INK} strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <circle cx="54.5" cy="5" r="0.8" fill={INK} />
+      <path d="M14 32 L12 46 M22 34 L22 48 M38 33 L40 47 M46 30 L50 44" stroke={INK} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M10 24 L6 22" stroke={INK} strokeWidth="1.2" />
+    </g>
+  );
+}
+
+/* ======================================================================
+   11月 柳
+   ====================================================================== */
+
+function WillowStrands({ x = 54, count = 6 }: { x?: number; count?: number }) {
+  return (
+    <g>
+      {Array.from({ length: count }, (_, i) => {
+        const sx = x - i * 5;
+        return (
+          <g key={i}>
+            <path d={`M${sx + 8} 0 C${sx + 2} 20 ${sx} 40 ${sx - 4} ${56 + (i % 3) * 8}`} fill="none" stroke={GREEN} strokeWidth="1.1" />
+            {Array.from({ length: 6 }, (_, j) => (
+              <ellipse
+                key={j}
+                cx={sx + 6 - j * 1.6}
+                cy={8 + j * 8}
+                rx="1.2"
+                ry="3.2"
+                fill={GREEN}
+                stroke={INK}
+                strokeWidth="0.3"
+                transform={`rotate(20 ${sx + 6 - j * 1.6} ${8 + j * 8})`}
+              />
+            ))}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+function WillowCard({ card }: CardProps) {
+  if (card.isRain) return <RainMan />;
+  if (card.kind === "chaff") return <Thunder />;
+  return (
+    <g>
+      {card.kind === "animal" && <rect x="0" y="0" width="70" height="100" fill="#f2d98a" />}
+      <WillowStrands />
+      {card.kind === "animal" && (
+        <>
+          <path d="M0 84 C14 80 24 88 36 84 C48 80 58 88 70 84 V100 H0 Z" fill={BLUE} />
+          <Swallow />
+        </>
+      )}
+      {card.kind === "ribbon" && <Tanzaku color={RED} x={16} y={30} rot={-12} />}
+    </g>
+  );
+}
+
+function Swallow() {
+  return (
+    <g transform="translate(12 52) rotate(18)">
+      <path d="M0 8 C8 2 18 0 26 4 C20 8 12 12 0 8 Z" fill={BLUE} {...line} />
+      <path d="M10 4 C14 -8 22 -14 30 -14 C24 -8 20 -2 16 4 Z" fill={INK} />
+      <path d="M8 8 C14 16 22 20 30 20 C24 14 18 10 14 8 Z" fill={INK} />
+      <path d="M0 8 L-12 2 M0 8 L-12 12" stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="26" cy="5" r="2" fill={RED} />
+      <circle cx="25" cy="3.4" r="0.6" fill={WHITE} />
     </g>
   );
 }
@@ -670,109 +927,171 @@ function Deer() {
 function RainMan() {
   return (
     <g>
-      {[0, 1, 2, 3, 4, 5].map((i) => (
-        <path
-          key={i}
-          d={`M${14 + i * 8} 18 l-3 14`}
-          stroke="#7a9ab8"
-          strokeWidth="1.2"
-          opacity="0.7"
-        />
+      <rect x="0" y="0" width="70" height="100" fill="#3c4a5a" />
+      {Array.from({ length: 14 }, (_, i) => (
+        <path key={i} d={`M${(i * 11) % 70} ${(i * 17) % 40} l-4 14`} stroke={WHITE} strokeWidth="0.6" opacity="0.5" />
       ))}
-      <g transform="translate(22 34)">
-        <path d="M8 8 C4 0 20 0 16 8 L18 34 H6 Z" fill="#4a5560" />
-        <path d="M6 16 H18" stroke="#c45c3a" strokeWidth="1.2" />
-        <circle cx="12" cy="10" r="3.5" fill="#e8dcc0" />
-        <path d="M4 34 H20 L16 42 H8 Z" fill="#3a4550" />
-        <path d="M10 42 L6 52 M14 42 L18 52" stroke="#2a2a2a" strokeWidth="1.4" />
+      <WillowStrands x={62} count={3} />
+      {/* stream */}
+      <path d="M0 80 C12 76 22 84 35 80 C48 76 58 84 70 80 V100 H0 Z" fill={BLUE} />
+      <path d="M4 88 C14 84 22 90 32 87 M38 90 C48 86 56 92 66 88" stroke={WHITE} strokeWidth="0.8" fill="none" opacity="0.8" />
+      {/* umbrella */}
+      <path d="M14 36 C18 22 40 18 52 30 Z" fill={YELLOW} {...line} />
+      {[22, 30, 38, 46].map((x) => (
+        <path key={x} d={`M33 26 L${x} 34`} stroke={INK} strokeWidth="0.5" />
+      ))}
+      <path d="M33 26 L32 60" stroke={INK} strokeWidth="1" />
+      {/* robe */}
+      <path d="M24 42 C22 54 20 66 18 78 H44 C42 66 40 54 38 42 Z" fill={RED} {...line} />
+      <path d="M24 42 C28 50 34 50 38 42" fill={INK} />
+      <path d="M22 60 C28 58 36 60 42 58" stroke={INK} strokeWidth="1.8" fill="none" />
+      <circle cx="31" cy="38" r="4" fill="#f1dcc0" {...line} />
+      <path d="M27 35 C30 31 34 32 35 36" fill={INK} />
+      <path d="M22 78 L20 84 M40 78 L42 84" stroke={INK} strokeWidth="1.6" />
+      {/* frog */}
+      <g transform="translate(52 66) rotate(-30)">
+        <ellipse cx="0" cy="0" rx="5" ry="3.6" fill={GREEN} {...line} />
+        <circle cx="-3" cy="-3" r="1.4" fill={GREEN} {...line} strokeWidth={0.5} />
+        <circle cx="-3" cy="-3" r="0.5" fill={INK} />
+        <path d="M3 2 L8 6 L10 4 M-1 3 L-3 8" stroke={INK} strokeWidth="0.9" fill="none" />
       </g>
-      <path d="M18 70 C28 78 40 78 52 68" fill="none" stroke="#6b8f5a" strokeWidth="2" />
     </g>
   );
 }
 
-function Swallow() {
+function Thunder() {
   return (
-    <g transform="translate(24 24)">
-      <path d="M8 20 C0 8 12 4 18 12 C28 2 40 12 28 20 C36 28 24 34 18 28 C12 36 4 28 8 20 Z" fill="#3a4550" />
-      <path d="M28 16 L36 10" stroke="#c45c3a" strokeWidth="1.1" />
-      <circle cx="24" cy="14" r="0.9" fill="#fff" />
+    <g>
+      <rect x="0" y="0" width="70" height="100" fill={RED} />
+      <path d="M0 18 C14 10 26 22 40 14 C52 8 62 16 70 12 V0 H0 Z" fill={INK} />
+      {[
+        [14, 40],
+        [36, 32],
+        [56, 42],
+      ].map(([x, y], i) => (
+        <g key={i} transform={`translate(${x} ${y})`}>
+          <ellipse cx="0" cy="0" rx="7" ry="7" fill={INK} />
+          <circle r="4.4" fill={RED} stroke={YELLOW} strokeWidth="0.8" />
+          <path d="M0 -4.4 A4.4 4.4 0 0 1 0 4.4 A2.2 2.2 0 0 1 0 0 A2.2 2.2 0 0 0 0 -4.4 Z" fill={YELLOW} />
+        </g>
+      ))}
+      <path d="M40 50 L30 66 L38 66 L26 88 L46 62 L38 62 L48 50 Z" fill={YELLOW} {...line} />
+      <path d="M8 92 C20 84 50 84 62 92" stroke={INK} strokeWidth="2" fill="none" />
+    </g>
+  );
+}
+
+/* ======================================================================
+   12月 桐
+   ====================================================================== */
+
+function PaulowniaLeaf({ x, y, s, rot }: { x: number; y: number; s: number; rot: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s})`}>
+      <path
+        d="M0 0 C-14 -2 -18 -14 -10 -20 C-8 -26 0 -28 0 -22 C0 -28 8 -26 10 -20 C18 -14 14 -2 0 0 Z"
+        fill={INK}
+        stroke={GREEN}
+        strokeWidth="0.6"
+      />
+      <path d="M0 0 V-22 M0 -8 L-10 -14 M0 -8 L10 -14" stroke={GREEN} strokeWidth="0.7" />
+    </g>
+  );
+}
+
+function PaulowniaFlowers({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <path d="M0 0 V-24" stroke={INK} strokeWidth="1" />
+      {[0, 1, 2, 3, 4].map((i) => (
+        <g key={i}>
+          <ellipse cx={-3} cy={-4 - i * 5} rx="2.6" ry="2" fill={PURPLE} {...line} strokeWidth={0.5} />
+          <ellipse cx={3} cy={-6 - i * 5} rx="2.6" ry="2" fill="#7d5bb0" {...line} strokeWidth={0.5} />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+function PaulowniaCard({ card, v }: CardProps) {
+  if (card.kind === "bright") {
+    return (
+      <g>
+        <SkyBand y={36} color={RED} />
+        <PaulowniaLeaf x={16} y={98} s={1.3} rot={-12} />
+        <PaulowniaLeaf x={54} y={98} s={1.2} rot={14} />
+        <Phoenix />
+      </g>
+    );
+  }
+  return (
+    <g>
+      {v === 3 && <rect x="0" y="62" width="70" height="38" fill={YELLOW} />}
+      <PaulowniaFlowers x={20} y={50} s={1.05} />
+      <PaulowniaFlowers x={35} y={42} s={1.2} />
+      <PaulowniaFlowers x={50} y={50} s={1.05} />
+      <PaulowniaLeaf x={14} y={96} s={1.25} rot={-16} />
+      <PaulowniaLeaf x={35} y={92} s={1.35} rot={0} />
+      <PaulowniaLeaf x={56} y={96} s={1.25} rot={16} />
+      {v === 2 && <rect x="0" y="0" width="70" height="12" fill={YELLOW} />}
     </g>
   );
 }
 
 function Phoenix() {
+  const tails: [string, string, number, number][] = [
+    [BLUE, "M38 50 C52 54 62 64 68 80 C60 72 50 64 36 56 Z", 66, 76],
+    [GREEN, "M36 52 C46 62 54 78 60 96 C52 88 44 74 33 58 Z", 58, 90],
+    [RED, "M33 55 C36 68 38 82 40 98 C33 90 29 76 29 58 Z", 38, 93],
+  ];
   return (
-    <g transform="translate(10 16)">
-      <path d="M24 40 C8 28 12 8 28 14 C36 4 50 12 44 24 C56 22 58 40 44 38 C40 52 28 52 24 40 Z" fill="#c43a3a" />
-      <path d="M28 16 C24 4 34 0 36 10" fill="#d4a05a" />
-      <path d="M44 38 C52 48 48 58 40 52" fill="#e09048" />
-      <path d="M20 38 C10 48 8 58 18 50" fill="#9a1f2b" />
-      <circle cx="32" cy="18" r="1.1" fill="#1c1c1c" />
-      <path d="M36 16 L42 10" stroke="#c4a35a" strokeWidth="1.2" />
+    <g>
+      {/* tail streamers */}
+      {tails.map(([fill, d, ex, ey], i) => (
+        <g key={i}>
+          <path d={d} fill={fill} {...line} />
+          <circle cx={ex} cy={ey} r="2.6" fill={YELLOW} stroke={INK} strokeWidth="0.6" />
+          <circle cx={ex} cy={ey} r="1.1" fill={RED} />
+        </g>
+      ))}
+      {/* wings */}
+      <path d="M28 42 C28 28 32 16 42 4 C44 18 42 30 35 44 Z" fill={GREEN} {...line} />
+      <path d="M30 44 C34 28 44 14 62 6 C58 20 50 32 38 46 Z" fill={RED} {...line} />
+      <path d="M33 46 C42 34 54 26 68 24 C60 34 50 42 39 49 Z" fill={YELLOW} {...line} />
+      {[
+        "M36 40 C42 30 50 20 58 12",
+        "M38 44 C46 36 54 30 64 27",
+      ].map((d, i) => (
+        <path key={i} d={d} fill="none" stroke={INK} strokeWidth="0.6" />
+      ))}
+      {/* body */}
+      <ellipse cx="32" cy="50" rx="9" ry="6.5" transform="rotate(-30 32 50)" fill={YELLOW} {...line} />
+      <path d="M26 50 C30 48 34 50 36 54" fill="none" stroke={RED} strokeWidth="1.2" />
+      {/* neck and head */}
+      <path d="M28 46 C20 42 15 34 18 24" fill="none" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+      <path d="M28 46 C20 42 15 34 18 24" fill="none" stroke={GREEN} strokeWidth="4.2" strokeLinecap="round" />
+      <circle cx="18" cy="21" r="4.6" fill={GREEN} {...line} />
+      <path d="M14 20 L6 22.5 L14 24 Z" fill={YELLOW} {...line} strokeWidth={0.6} />
+      <ellipse cx="15.5" cy="26" rx="1.6" ry="2.4" fill={RED} {...line} strokeWidth={0.5} />
+      <circle cx="17" cy="20" r="1" fill={WHITE} />
+      <circle cx="17" cy="20" r="0.5" fill={INK} />
+      <path d="M20 17 C22 12 26 9 30 9 M19 17 C19 11 22 7 25 5 M18 17 C16 12 16 8 18 5" fill="none" stroke={RED} strokeWidth="1.4" strokeLinecap="round" />
     </g>
   );
 }
 
+/* ======================================================================
+   Back
+   ====================================================================== */
+
 export function CardBackArt() {
-  const uid = useId().replace(/:/g, "");
   return (
     <svg viewBox="0 0 70 100" className="h-full w-full" aria-hidden>
-      <defs>
-        <linearGradient id={`back-grad-${uid}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#8b1e1e" />
-          <stop offset="50%" stopColor="#5c1018" />
-          <stop offset="100%" stopColor="#3d0c12" />
-        </linearGradient>
-        <pattern
-          id={`back-pattern-${uid}`}
-          width="8"
-          height="8"
-          patternUnits="userSpaceOnUse"
-        >
-          <circle cx="4" cy="4" r="1.1" fill="#d4c08a" opacity="0.22" />
-        </pattern>
-      </defs>
-      <rect
-        x="1.5"
-        y="1.5"
-        width="67"
-        height="97"
-        rx="3.5"
-        fill={`url(#back-grad-${uid})`}
-        stroke="#d4c08a"
-        strokeWidth="1.2"
-      />
-      <rect
-        x="5"
-        y="5"
-        width="60"
-        height="90"
-        rx="2"
-        fill={`url(#back-pattern-${uid})`}
-      />
-      <rect
-        x="12"
-        y="20"
-        width="46"
-        height="60"
-        rx="2"
-        fill="none"
-        stroke="#d4c08a"
-        strokeWidth="0.8"
-        opacity="0.55"
-      />
-      <text
-        x="35"
-        y="54"
-        textAnchor="middle"
-        fontSize="14"
-        fill="#d4c08a"
-        opacity="0.85"
-        fontFamily="serif"
-      >
-        花
-      </text>
+      <rect x="0.5" y="0.5" width="69" height="99" rx="4" fill="#15110e" />
+      <rect x="2.2" y="2.2" width="65.6" height="95.6" rx="2.6" fill="#2a1d17" />
+      <rect x="2.2" y="2.2" width="65.6" height="95.6" rx="2.6" fill="#8f1614" opacity="0.18" />
+      <path d="M2.2 20 C24 10 46 30 67.8 18 V2.2 H2.2 Z" fill="#ffffff" opacity="0.05" />
+      <rect x="2.2" y="2.2" width="65.6" height="95.6" rx="2.6" fill="none" stroke="#000" strokeWidth="0.6" />
     </svg>
   );
 }

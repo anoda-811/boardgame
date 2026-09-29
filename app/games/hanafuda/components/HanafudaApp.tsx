@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { evaluateYaku } from "@/lib/hanafuda/yaku";
 import {
   chooseKoikoi,
@@ -20,6 +20,15 @@ import {
 } from "@/lib/hanafuda/game";
 import { CardView } from "./CardView";
 import { CardBackArt } from "./CardArt";
+import { Table3D } from "./Table3D";
+import { playCardSound, primeCardAudio } from "./cardSound";
+
+export type ViewMode = "2d" | "3d";
+
+const VIEW_LABEL: Record<ViewMode, { label: string; description: string }> = {
+  "2d": { label: "平面", description: "札を並べて見やすく" },
+  "3d": { label: "立体", description: "卓を囲む臨場感" },
+};
 
 const petals = [
   { left: "8%", delay: "0s", duration: "11s", size: 12 },
@@ -30,7 +39,15 @@ const petals = [
   { left: "84%", delay: "5.8s", duration: "15s", size: 8 },
 ];
 
-function TitleScreen({ onStart }: { onStart: () => void }) {
+function TitleScreen({
+  onStart,
+  view,
+  onViewChange,
+}: {
+  onStart: () => void;
+  view: ViewMode;
+  onViewChange: (view: ViewMode) => void;
+}) {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-pine-deep text-[#f3e7c8]">
       <div
@@ -68,7 +85,35 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
           <br />
           こいこいの対局へようこそ。
         </p>
-        <div className="animate-fade-up mt-12 flex flex-col items-center gap-4">
+        <div className="animate-fade-up mt-10 w-full max-w-xs">
+          <p className="mb-2 text-[10px] tracking-[0.35em] text-[#d4c08a]/70">表示モード</p>
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="表示モード">
+            {(Object.keys(VIEW_LABEL) as ViewMode[]).map((key) => {
+              const active = key === view;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => onViewChange(key)}
+                  className={[
+                    "flex flex-col items-center gap-1 border px-2 py-2.5 transition",
+                    active
+                      ? "border-[#e6cf94]/80 bg-[#d4c08a]/20 shadow-[0_0_18px_rgba(212,192,138,0.25)]"
+                      : "border-[#d4c08a]/20 bg-black/20 hover:border-[#d4c08a]/45",
+                  ].join(" ")}
+                >
+                  <span className="font-[family-name:var(--font-display)] text-base tracking-[0.2em]">
+                    {VIEW_LABEL[key].label}
+                  </span>
+                  <span className="text-[10px] text-[#d4c08a]/65">{VIEW_LABEL[key].description}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="animate-fade-up mt-8 flex flex-col items-center gap-4">
           <button
             type="button"
             onClick={onStart}
@@ -79,6 +124,12 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
           <p className="text-xs tracking-widest text-[#d8e0d0]/45">
             CPU対戦・12文先取
           </p>
+          <Link
+            href="/games/hanafuda/cards"
+            className="text-xs tracking-widest text-[#d4c08a]/75 underline-offset-4 transition hover:text-[#f3e7c8] hover:underline"
+          >
+            札の一覧を見る
+          </Link>
         </div>
       </div>
 
@@ -245,13 +296,44 @@ function StageCard({
 function GameScreen({
   state,
   setState,
+  view,
+  onViewChange,
   onExit,
 }: {
   state: GameState;
   setState: React.Dispatch<React.SetStateAction<GameState>>;
+  view: ViewMode;
+  onViewChange: (view: ViewMode) => void;
   onExit: () => void;
 }) {
   const [, startTransition] = useTransition();
+  const [soundOn, setSoundOn] = useState(true);
+
+  const soundRef = useRef({ on: soundOn, view, field: 0, captured: 0, pending: "" });
+  useEffect(() => {
+    soundRef.current.on = soundOn;
+    soundRef.current.view = view;
+  }, [soundOn, view]);
+
+  const fieldCount = state.field.length;
+  const capturedCount = state.captured.player.length + state.captured.opponent.length;
+  const pendingId = state.pendingCard?.id ?? "";
+  useEffect(() => {
+    const prev = soundRef.current;
+    const capturedMore = capturedCount > prev.captured;
+    const placed = fieldCount > prev.field && !capturedMore;
+    const revealed = pendingId !== "" && pendingId !== prev.pending;
+    const newRound = capturedCount < prev.captured;
+    prev.field = fieldCount;
+    prev.captured = capturedCount;
+    prev.pending = pendingId;
+    if (!prev.on || newRound) return;
+
+    const landing = prev.view === "3d" ? 240 : 0;
+    if (capturedMore) playCardSound("slap", landing);
+    else if (placed) playCardSound("place", landing);
+    else if (revealed) playCardSound("flip");
+  }, [fieldCount, capturedCount, pendingId]);
   const selectingField =
     state.phase === "selectField" || state.phase === "selectDrawField";
   const canPickHand = state.phase === "selectHand";
@@ -312,34 +394,103 @@ function GameScreen({
     };
   }, [state.phase, state.pendingCard, setState]);
 
+  const header = (
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p className="text-xs tracking-[0.35em] text-[#d4c08a]/70">KOI-KOI</p>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl tracking-widest">
+          こいこい
+        </h1>
+      </div>
+      <div className="flex items-center gap-3 text-sm text-[#d8e0d0]/70">
+        {view === "2d" && state.koikoiCount > 0 && (
+          <span className="text-[#d4c08a]">こいこい×{state.koikoiCount}</span>
+        )}
+        <div className="flex border border-[#d8e0d0]/25" role="radiogroup" aria-label="表示モード">
+          {(Object.keys(VIEW_LABEL) as ViewMode[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={view === key}
+              onClick={() => onViewChange(key)}
+              className={[
+                "px-3 py-1 text-xs tracking-widest transition",
+                view === key
+                  ? "bg-[#d4c08a]/25 text-[#f3e7c8]"
+                  : "text-[#d8e0d0]/55 hover:text-[#f3e7c8]",
+              ].join(" ")}
+            >
+              {VIEW_LABEL[key].label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          aria-pressed={soundOn}
+          onClick={() => {
+            if (!soundOn) {
+              primeCardAudio();
+              playCardSound("place");
+            }
+            setSoundOn((v) => !v);
+          }}
+          className={[
+            "border px-3 py-1 text-xs tracking-widest transition",
+            soundOn
+              ? "border-[#d8e0d0]/25 hover:border-[#d4c08a]/50"
+              : "border-[#d8e0d0]/15 text-[#d8e0d0]/40 hover:text-[#f3e7c8]",
+          ].join(" ")}
+        >
+          {soundOn ? "音 あり" : "音 なし"}
+        </button>
+        <button
+          type="button"
+          onClick={onExit}
+          className="border border-[#d8e0d0]/25 px-3 py-1 text-xs tracking-widest hover:border-[#d4c08a]/50"
+        >
+          タイトル
+        </button>
+      </div>
+    </header>
+  );
+
+  const modals = <GameModals state={state} setState={setState} onExit={onExit} />;
+  const prime = () => {
+    if (soundOn) primeCardAudio();
+  };
+
+  if (view === "3d") {
+    return (
+      <div
+        className="relative flex h-dvh min-h-[560px] flex-col overflow-clip bg-[#0b0705] text-[#f3e7c8]"
+        onPointerDown={prime}
+      >
+        <div className="relative z-30 border-b border-[#f3d9a8]/10 bg-black/40 px-4 py-2 sm:px-6">{header}</div>
+        <Table3D
+          state={state}
+          onPickHand={(id) => setState((s) => (s.phase === "selectHand" ? selectHandCard(s, id) : s))}
+          onPickField={(id) =>
+            setState((s) =>
+              s.phase === "selectField" || s.phase === "selectDrawField" ? selectFieldCard(s, id) : s,
+            )
+          }
+          onDraw={() => setState((s) => (s.phase === "awaitDraw" ? drawFromDeck(s) : s))}
+        />
+        {modals}
+      </div>
+    );
+  }
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-pine-deep text-[#f3e7c8]">
+    <div className="relative min-h-screen overflow-hidden bg-pine-deep text-[#f3e7c8]" onPointerDown={prime}>
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#2a4a34_0%,_#163024_55%,_#0d1c14_100%)]"
       />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs tracking-[0.35em] text-[#d4c08a]/70">KOI-KOI</p>
-            <h1 className="font-[family-name:var(--font-display)] text-2xl tracking-widest">
-              こいこい
-            </h1>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-[#d8e0d0]/70">
-            {state.koikoiCount > 0 && (
-              <span className="text-[#d4c08a]">こいこい×{state.koikoiCount}</span>
-            )}
-            <button
-              type="button"
-              onClick={onExit}
-              className="border border-[#d8e0d0]/25 px-3 py-1 text-xs tracking-widest hover:border-[#d4c08a]/50"
-            >
-              タイトル
-            </button>
-          </div>
-        </header>
+        {header}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <CapturedSummary label="あいて" state={state} who="opponent" />
@@ -427,8 +578,25 @@ function GameScreen({
           </div>
         </section>
 
+        {modals}
+      </div>
+    </div>
+  );
+}
+
+function GameModals({
+  state,
+  setState,
+  onExit,
+}: {
+  state: GameState;
+  setState: React.Dispatch<React.SetStateAction<GameState>>;
+  onExit: () => void;
+}) {
+  return (
+    <>
         {state.phase === "koikoi" && (
-          <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/55 p-4">
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 p-4">
             <div className="w-full max-w-md border border-[#d4c08a]/35 bg-[#163024] p-6 text-center shadow-2xl">
               <p className="text-xs tracking-[0.35em] text-[#d4c08a]/80">YAKU</p>
               <h3 className="mt-2 font-[family-name:var(--font-display)] text-3xl">
@@ -459,7 +627,7 @@ function GameScreen({
 
         {(state.phase === "roundOver" || state.phase === "matchOver") &&
           state.roundResult && (
-            <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/55 p-4">
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 p-4">
               <div className="w-full max-w-md border border-[#d4c08a]/35 bg-[#163024] p-6 text-center shadow-2xl">
                 <p className="text-xs tracking-[0.35em] text-[#d4c08a]/80">
                   {state.phase === "matchOver" ? "MATCH" : "ROUND"}
@@ -516,22 +684,33 @@ function GameScreen({
               </div>
             </div>
           )}
-      </div>
-    </div>
+    </>
   );
 }
 
 export function HanafudaApp() {
   const [state, setState] = useState<GameState>(() => createInitialState());
+  const [view, setView] = useState<ViewMode>("2d");
 
   if (state.phase === "title") {
-    return <TitleScreen onStart={() => setState(startMatch())} />;
+    return (
+      <TitleScreen
+        view={view}
+        onViewChange={setView}
+        onStart={() => {
+          primeCardAudio();
+          setState(startMatch());
+        }}
+      />
+    );
   }
 
   return (
     <GameScreen
       state={state}
       setState={setState}
+      view={view}
+      onViewChange={setView}
       onExit={() => setState(createInitialState())}
     />
   );

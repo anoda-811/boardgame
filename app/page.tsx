@@ -45,7 +45,7 @@ const games = [
     id: "shogi",
     title: "将棋",
     subtitle: "対局",
-    description: "盤上の駆け引き。先手であなたが指す。",
+    description: "段位を選び、順位戦から名人戦へ。",
     href: "/games/shogi",
     available: true,
     accent: "from-[#5a3a1e] via-[#3d2814] to-[#1a120c]",
@@ -59,7 +59,18 @@ const games = [
     available: true,
     accent: "from-[#243140] via-[#151c26] to-[#0b0e13]",
   },
+  {
+    id: "mahjong",
+    title: "麻雀",
+    subtitle: "東風戦",
+    description: "立体の卓で、CPU三人と打つ。",
+    href: "/games/mahjong",
+    available: true,
+    accent: "from-[#1f5a3a] via-[#14402a] to-[#0a2016]",
+  },
 ];
+
+const mahjongPreview = ["東", "中", "發"];
 
 export default function Home() {
   return (
@@ -138,6 +149,21 @@ export default function Home() {
                   ) : game.id === "chess" ? (
                     <div className="absolute inset-0 flex items-center justify-center px-4">
                       <ChessPreviewRow types={["r", "n", "b", "q", "k"]} />
+                    </div>
+                  ) : game.id === "mahjong" ? (
+                    <div className="absolute inset-0 flex items-center justify-center gap-2">
+                      {mahjongPreview.map((ch, i) => (
+                        <div
+                          key={ch}
+                          className="animate-drift flex h-20 w-14 items-center justify-center rounded-[5px] border-b-[6px] border-[#2b62b0] bg-[#f4efe2] font-[family-name:var(--font-display)] text-4xl shadow-[0_12px_28px_rgba(0,0,0,0.45)] sm:h-24 sm:w-[4.3rem]"
+                          style={{
+                            animationDelay: `${i * 0.35}s`,
+                            color: ch === "中" ? "#c0241c" : ch === "發" ? "#1f7a45" : "#1b1b1f",
+                          }}
+                        >
+                          {ch}
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
