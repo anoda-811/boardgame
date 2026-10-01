@@ -73,7 +73,7 @@ const y = (t) => t * H;
 const headRy = 0.1;
 const headRx = headRy * 0.78;
 const headRz = headRy * 0.9;
-const headY = y(0.88);
+const headY = y(0.58);
 const headZ = -0.02;
 
 addEllipsoid("skin", skin, 0, headY, headZ, headRx, headRy, headRz, 20, 28);
@@ -107,29 +107,30 @@ addEllipsoid("skin", skin, 0, headY - headRy * 0.4, headZ + headRz * 0.88, headR
 addEllipsoid("skin", skin, 0, headY - headRy * 0.95, headZ - 0.01, headRx * 0.36, 0.035, headRz * 0.34, 8, 12);
 
 const chestRx = 0.13;
-const chestRy = 0.13;
+const chestRy = 0.078;
 const chestRz = 0.055;
-const chestY = y(0.58);
-const chestZ = -0.06;
+const chestY = y(0.38);
+const chestZ = -0.05;
 addEllipsoid("cloth", cloth, 0, chestY, chestZ, chestRx, chestRy, chestRz, 18, 24);
-addEllipsoid("cloth", cloth, 0, y(0.42), chestZ - 0.01, chestRx * 0.82, 0.045, chestRz * 0.9, 10, 16);
+addEllipsoid("cloth", cloth, 0, y(0.26), chestZ - 0.01, chestRx * 0.88, 0.045, chestRz * 0.95, 10, 16);
 
 for (const s of [-1, 1]) {
-  const shoulder = [s * 0.12, chestY + chestRy * 0.45, chestZ];
-  const elbow = [s * 0.15, y(0.46), chestZ];
-  const hand = [s * 0.055, y(0.33), chestZ + 0.01];
-  addLimb("cloth", cloth, ...shoulder, ...elbow, 0.038);
-  addLimb("cloth", cloth, ...elbow, ...hand, 0.03);
-  addEllipsoid("skin", skin, hand[0], hand[1] - 0.008, hand[2] + 0.01, 0.034, 0.012, 0.02, 8, 10);
-  // Short folded seiza: the knee sits just under the far edge of the board,
-  // and the shin tucks back instead of hanging to the floor.
-  const hip = [s * 0.055, y(0.3), -0.04];
-  const knee = [s * 0.1, y(0.2), -0.015];
-  const heel = [s * 0.04, y(0.15), -0.13];
-  addLimb("pants", pants, ...hip, ...knee, 0.055);
-  addEllipsoid("pants", pants, knee[0], knee[1] + 0.005, knee[2], 0.05, 0.032, 0.042, 10, 12);
-  addLimb("pants", pants, knee[0], knee[1] - 0.008, knee[2] - 0.02, ...heel, 0.038);
-  addEllipsoid("pants", pants, heel[0], heel[1], heel[2], 0.04, 0.026, 0.055, 8, 10);
+  const shoulder = [s * 0.115, chestY + chestRy * 0.2, chestZ];
+  const elbow = [s * 0.13, y(0.28), chestZ + 0.01];
+  const hand = [s * 0.05, y(0.16), -0.02];
+  addLimb("cloth", cloth, ...shoulder, ...elbow, 0.036);
+  addLimb("cloth", cloth, ...elbow, ...hand, 0.028);
+  addEllipsoid("skin", skin, hand[0], hand[1] - 0.006, hand[2] + 0.012, 0.032, 0.012, 0.02, 8, 10);
+  // Seiza: the shin and the top of the foot lie flat on the floor.
+  // y=0 is the cushion. The shin center sits one radius above it.
+  const shinY = 0.03;
+  const hip = [s * 0.046, y(0.15), -0.03];
+  const knee = [s * 0.088, shinY + 0.008, 0.015];
+  const heel = [s * 0.036, shinY, -0.15];
+  addLimb("pants", pants, ...hip, ...knee, 0.048);
+  addEllipsoid("pants", pants, knee[0], knee[1], knee[2], 0.05, 0.034, 0.042, 10, 12);
+  addLimb("pants", pants, knee[0], shinY, knee[2] - 0.02, heel[0], shinY, heel[2], 0.028);
+  addEllipsoid("pants", pants, heel[0], 0.016, heel[2] - 0.02, 0.04, 0.016, 0.055, 8, 10);
 }
 
 class FileReaderPolyfill {

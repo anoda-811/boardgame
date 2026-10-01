@@ -12,9 +12,9 @@ type Props = {
 };
 
 const sizeClass = {
-  sm: "h-[4.5rem] w-[3.15rem]",
-  md: "h-[5.75rem] w-[4rem]",
-  lg: "h-[7rem] w-[4.9rem]",
+  sm: "h-[3.15rem] w-[2.2rem] sm:h-[4.5rem] sm:w-[3.15rem]",
+  md: "h-[4.35rem] w-[3.05rem] sm:h-[5.75rem] sm:w-[4rem]",
+  lg: "h-[5.25rem] w-[3.7rem] sm:h-[7rem] sm:w-[4.9rem]",
 } as const;
 
 export function CardView({

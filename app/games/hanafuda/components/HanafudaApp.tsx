@@ -154,14 +154,14 @@ function CapturedRow({
 }) {
   if (cards.length === 0) return null;
   return (
-    <div className="min-w-0">
-      <p className="mb-1 text-[10px] tracking-widest text-[#d8e0d0]/45">{label}</p>
+    <div className="min-w-0 flex-1">
+      <p className="mb-0.5 text-[9px] tracking-widest text-[#d8e0d0]/45 sm:mb-1 sm:text-[10px]">{label}</p>
       <div className="flex items-end">
         {cards.map((card, index) => (
           <div
             key={card.id}
             className="relative shrink-0"
-            style={{ marginLeft: index === 0 ? 0 : -18 }}
+            style={{ marginLeft: index === 0 ? 0 : -14 }}
           >
             <CardView card={card} size="sm" />
           </div>
@@ -194,9 +194,9 @@ function CapturedSummary({
   const total = state.captured[who].length;
 
   return (
-    <div className="rounded-sm border border-[#d4c08a]/20 bg-black/20 px-3 py-2 text-[#f3e7c8]">
+    <div className="rounded-sm border border-[#d4c08a]/20 bg-black/20 px-2 py-1.5 text-[#f3e7c8] sm:px-3 sm:py-2">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="font-[family-name:var(--font-display)] text-lg">{label}</p>
+        <p className="font-[family-name:var(--font-display)] text-base sm:text-lg">{label}</p>
         <p className="text-sm tracking-widest text-[#d4c08a]">
           {state.scores[who]}文
           <span className="ml-2 text-[#d8e0d0]/45">取り札 {total}</span>
@@ -211,7 +211,7 @@ function CapturedSummary({
       {total === 0 ? (
         <p className="mt-3 text-xs text-[#d8e0d0]/40">まだ取り札はありません</p>
       ) : (
-        <div className="mt-3 flex flex-col gap-2 overflow-x-auto pb-1">
+        <div className="mt-1.5 flex items-end gap-1 overflow-hidden pb-0.5 sm:mt-3 sm:flex-col sm:gap-2 sm:overflow-x-auto sm:pb-1">
           <CapturedRow label="光" cards={groups.bright} />
           <CapturedRow label="種" cards={groups.animal} />
           <CapturedRow label="短" cards={groups.ribbon} />
@@ -233,7 +233,7 @@ function DeckPile({
 }) {
   if (count <= 0) {
     return (
-      <div className="flex h-[5.75rem] w-[4rem] items-center justify-center rounded-[4px] border border-dashed border-[#d8e0d0]/25 text-[10px] tracking-widest text-[#d8e0d0]/35">
+      <div className="flex h-[4.35rem] w-[3.05rem] items-center justify-center rounded-[4px] border border-dashed border-[#d8e0d0]/25 text-[10px] tracking-widest text-[#d8e0d0]/35 sm:h-[5.75rem] sm:w-[4rem]">
         空
       </div>
     );
@@ -245,7 +245,7 @@ function DeckPile({
       disabled={!canDraw}
       onClick={onDraw}
       className={[
-        "relative h-[5.75rem] w-[4rem] rounded-[4px] p-0 transition",
+        "relative h-[4.35rem] w-[3.05rem] rounded-[4px] p-0 transition sm:h-[5.75rem] sm:w-[4rem]",
         canDraw
           ? "animate-deck-pulse cursor-pointer hover:-translate-y-1"
           : "cursor-default opacity-90",
@@ -280,7 +280,7 @@ function StageCard({
 
   if (!showing || !state.pendingCard) {
     return (
-      <div className="flex h-[5.75rem] w-[4rem] items-center justify-center rounded-[4px] border border-dashed border-[#d8e0d0]/15 text-[10px] tracking-widest text-[#d8e0d0]/30">
+      <div className="flex h-[4.35rem] w-[3.05rem] items-center justify-center rounded-[4px] border border-dashed border-[#d8e0d0]/15 text-[10px] tracking-widest text-[#d8e0d0]/30 sm:h-[5.75rem] sm:w-[4rem]">
         めくり
       </div>
     );
@@ -395,14 +395,14 @@ function GameScreen({
   }, [state.phase, state.pendingCard, setState]);
 
   const header = (
-    <header className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p className="text-xs tracking-[0.35em] text-[#d4c08a]/70">KOI-KOI</p>
-        <h1 className="font-[family-name:var(--font-display)] text-2xl tracking-widest">
+    <header className="flex items-center justify-between gap-2">
+      <div className="shrink-0">
+        <p className="hidden text-xs tracking-[0.35em] text-[#d4c08a]/70 sm:block">KOI-KOI</p>
+        <h1 className="font-[family-name:var(--font-display)] text-xl tracking-widest sm:text-2xl">
           こいこい
         </h1>
       </div>
-      <div className="flex items-center gap-3 text-sm text-[#d8e0d0]/70">
+      <div className="flex flex-wrap items-center justify-end gap-1.5 text-sm text-[#d8e0d0]/70 sm:gap-3">
         {view === "2d" && state.koikoiCount > 0 && (
           <span className="text-[#d4c08a]">こいこい×{state.koikoiCount}</span>
         )}
@@ -415,7 +415,7 @@ function GameScreen({
               aria-checked={view === key}
               onClick={() => onViewChange(key)}
               className={[
-                "px-3 py-1 text-xs tracking-widest transition",
+                "px-2 py-1 text-[11px] tracking-widest transition sm:px-3 sm:text-xs",
                 view === key
                   ? "bg-[#d4c08a]/25 text-[#f3e7c8]"
                   : "text-[#d8e0d0]/55 hover:text-[#f3e7c8]",
@@ -436,7 +436,7 @@ function GameScreen({
             setSoundOn((v) => !v);
           }}
           className={[
-            "border px-3 py-1 text-xs tracking-widest transition",
+            "border px-2 py-1 text-[11px] tracking-widest transition sm:px-3 sm:text-xs",
             soundOn
               ? "border-[#d8e0d0]/25 hover:border-[#d4c08a]/50"
               : "border-[#d8e0d0]/15 text-[#d8e0d0]/40 hover:text-[#f3e7c8]",
@@ -447,7 +447,7 @@ function GameScreen({
         <button
           type="button"
           onClick={onExit}
-          className="border border-[#d8e0d0]/25 px-3 py-1 text-xs tracking-widest hover:border-[#d4c08a]/50"
+          className="border border-[#d8e0d0]/25 px-2 py-1 text-[11px] tracking-widest hover:border-[#d4c08a]/50 sm:px-3 sm:text-xs"
         >
           タイトル
         </button>
@@ -463,7 +463,7 @@ function GameScreen({
   if (view === "3d") {
     return (
       <div
-        className="relative flex h-dvh min-h-[560px] flex-col overflow-clip bg-[#0b0705] text-[#f3e7c8]"
+        className="relative flex h-dvh flex-col overflow-clip bg-[#0b0705] text-[#f3e7c8] sm:min-h-[560px]"
         onPointerDown={prime}
       >
         <div className="relative z-30 border-b border-[#f3d9a8]/10 bg-black/40 px-4 py-2 sm:px-6">{header}</div>
@@ -489,22 +489,22 @@ function GameScreen({
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#2a4a34_0%,_#163024_55%,_#0d1c14_100%)]"
       />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6">
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-2 px-2 py-2 sm:gap-4 sm:px-6 sm:py-6">
         {header}
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <CapturedSummary label="あいて" state={state} who="opponent" />
           <CapturedSummary label="あなた" state={state} who="player" />
         </div>
 
-        <section className="rounded-sm border border-[#d4c08a]/15 bg-black/15 p-3 sm:p-4">
+        <section className="rounded-sm border border-[#d4c08a]/15 bg-black/15 p-2 sm:p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm tracking-[0.25em] text-[#d8e0d0]/65">場札</h2>
             <p className="text-xs text-[#d8e0d0]/55">{state.message}</p>
           </div>
 
-          <div className="mb-4 flex items-end justify-center gap-6 sm:gap-10">
-            <div className="flex flex-col items-center gap-6">
+          <div className="mb-3 flex items-end justify-center gap-4 sm:mb-4 sm:gap-10">
+            <div className="flex flex-col items-center gap-4 sm:gap-6">
               <p className="text-[10px] tracking-widest text-[#d8e0d0]/45">山札</p>
               <DeckPile
                 count={state.deck.length}
@@ -512,7 +512,7 @@ function GameScreen({
                 onDraw={() => setState((s) => drawFromDeck(s))}
               />
             </div>
-            <div className="flex flex-col items-center gap-6">
+            <div className="flex flex-col items-center gap-4 sm:gap-6">
               <p className="text-[10px] tracking-widest text-[#d8e0d0]/45">
                 {state.phase === "selectField" || state.phase === "opponentShowHand"
                   ? "出した札"
@@ -522,7 +522,7 @@ function GameScreen({
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-3">
             {state.field.map((card) => {
               const highlight =
                 selectingField &&
@@ -549,16 +549,16 @@ function GameScreen({
           </div>
         </section>
 
-        <section className="rounded-sm border border-[#d4c08a]/15 bg-black/20 p-3 sm:p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm tracking-[0.25em] text-[#d8e0d0]/65">手札</h2>
-            <div className="flex gap-1">
+        <section className="rounded-sm border border-[#d4c08a]/15 bg-black/20 p-2 sm:p-4">
+          <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3">
+            <h2 className="shrink-0 text-sm tracking-[0.25em] text-[#d8e0d0]/65">手札</h2>
+            <div className="flex max-w-[58%] justify-end max-sm:-space-x-2 sm:max-w-none sm:gap-1">
               {state.hands.opponent.map((card) => (
                 <CardView key={card.id} card={card} faceDown size="sm" />
               ))}
             </div>
           </div>
-          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-3">
             {state.hands.player.map((card) => (
               <CardView
                 key={card.id}

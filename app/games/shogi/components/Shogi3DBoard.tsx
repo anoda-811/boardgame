@@ -1662,7 +1662,7 @@ function sampleLinear(canvas: HTMLCanvasElement, nx: number, ny: number) {
 function SeatedOpponent({ person }: { person: Opponent }) {
   const cut = useSeizaCutout(seatedSrc(person));
   const height = 18.4 * stature(person.age);
-  const gltf = useGLTF("/models/seiza.glb?v=4");
+  const gltf = useGLTF("/models/seiza.glb?v=5");
   const built = useMemo(() => {
     const root = gltf.scene.clone(true);
     const materials: THREE.Material[] = [];
@@ -1710,7 +1710,7 @@ function SeatedOpponent({ person }: { person: Opponent }) {
     [built],
   );
 
-  const frontZ = -BOARD_D / 2 - 0.55;
+  const frontZ = -BOARD_D / 2 - 2.05;
   return <primitive object={built.root} position={[0, FLOOR_Y + 0.34, frontZ]} scale={height} />;
 }
 
@@ -1754,12 +1754,13 @@ function HostSeat() {
     const sweetWhite = mat("#f7f1e4", 0.62);
     const sweetGreen = mat("#8aaa58", 0.68);
 
-    add(new THREE.BoxGeometry(13.2, 0.18, 7.4), clothDark, [0, 0.09, -3.4]);
-    add(new THREE.BoxGeometry(12.6, 0.22, 6.8), cloth, [0, 0.26, -3.4]);
-    add(new THREE.BoxGeometry(12.9, 0.05, 0.12), piping, [0, 0.4, 0.0]);
-    add(new THREE.BoxGeometry(12.9, 0.05, 0.12), piping, [0, 0.4, -6.8]);
-    add(new THREE.BoxGeometry(0.12, 0.05, 6.9), piping, [6.4, 0.4, -3.4]);
-    add(new THREE.BoxGeometry(0.12, 0.05, 6.9), piping, [-6.4, 0.4, -3.4]);
+    const cushionZ = -1.6;
+    add(new THREE.BoxGeometry(7.8, 0.18, 7.8), clothDark, [0, 0.09, cushionZ]);
+    add(new THREE.BoxGeometry(7.2, 0.22, 7.2), cloth, [0, 0.26, cushionZ]);
+    add(new THREE.BoxGeometry(7.5, 0.05, 0.12), piping, [0, 0.4, cushionZ + 3.55]);
+    add(new THREE.BoxGeometry(7.5, 0.05, 0.12), piping, [0, 0.4, cushionZ - 3.55]);
+    add(new THREE.BoxGeometry(0.12, 0.05, 7.3), piping, [3.75, 0.4, cushionZ]);
+    add(new THREE.BoxGeometry(0.12, 0.05, 7.3), piping, [-3.75, 0.4, cushionZ]);
 
     const fanPaper = mat("#f7f1df", 0.9, { side: THREE.DoubleSide });
     const fanGroup = new THREE.Group();
@@ -1813,7 +1814,7 @@ function HostSeat() {
     add(sweet, sweetGreen, [8.35, 0.26, -3.35], undefined, [1.05, 0.6, 1.05]);
 
     return { root, geos, mats };
-  }, [6]);
+  }, [7]);
   useEffect(
     () => () => {
       built.geos.forEach((geo) => geo.dispose());
@@ -1821,11 +1822,11 @@ function HostSeat() {
     },
     [built],
   );
-  const frontZ = -BOARD_D / 2 - 0.55;
+  const frontZ = -BOARD_D / 2 - 2.05;
   return <primitive object={built.root} position={[0, FLOOR_Y, frontZ]} />;
 }
 
-useGLTF.preload("/models/seiza.glb?v=4");
+useGLTF.preload("/models/seiza.glb?v=5");
 
 function TatamiFloor({ material }: { material: THREE.Material }) {
   const geo = useMemo(() => {
@@ -2222,7 +2223,7 @@ function Scene({
 
       <Suspense fallback={null}>
         <SeatedOpponent person={across} />
-        <HostSeat key="seat-6" />
+        <HostSeat key="seat-7" />
       </Suspense>
 
       <ContactShadows position={[0, FLOOR_Y + 0.02, 0]} opacity={0.42} scale={30} blur={2.2} far={4} color="#3a2a1c" />
