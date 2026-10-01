@@ -115,8 +115,8 @@ function HandTray({
   const items = HAND_ORDER.filter((p) => hand[p] > 0);
 
   return (
-    <div className="shogi-komadai flex h-[4.75rem] flex-col justify-center overflow-hidden rounded-sm px-3 py-2">
-      <p className="mb-1.5 shrink-0 text-[10px] tracking-[0.3em] text-[#d4b896]/70">
+    <div className="shogi-komadai flex h-full flex-col justify-center overflow-hidden rounded-sm px-2 py-1 sm:px-3 sm:py-2">
+      <p className="mb-0.5 shrink-0 text-[10px] tracking-[0.3em] text-[#d4b896]/70 sm:mb-1.5">
         {label}
       </p>
       {items.length === 0 ? (
@@ -380,6 +380,7 @@ function FreeReview({
   hints,
   onJump,
   onUndo,
+  dock,
 }: {
   line: LineMark[];
   cursor: number;
@@ -387,6 +388,7 @@ function FreeReview({
   hints: { pending: boolean; moves: HintMove[]; opponent?: boolean } | null;
   onJump: (index: number) => void;
   onUndo: () => void;
+  dock: "top" | "bottom";
 }) {
   const current = line[cursor]?.evaluation ?? null;
   const share = evalShare(current);
@@ -405,11 +407,16 @@ function FreeReview({
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[4.25rem] z-30 flex items-start justify-between gap-3 px-3 sm:px-5">
-      <div className="pointer-events-auto flex w-[min(14.5rem,44vw)] flex-col gap-2">
-        <aside className="border border-[#e6cf94]/30 bg-[#140e0a]/80 px-3.5 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.38)] backdrop-blur-md">
+    <div
+      className={[
+        "pointer-events-none absolute inset-x-0 z-30 flex items-start justify-between gap-1 px-1.5 sm:top-[4.25rem] sm:bottom-auto sm:gap-3 sm:px-5",
+        dock === "bottom" ? "top-auto bottom-[3.35rem]" : "top-[3.1rem]",
+      ].join(" ")}
+    >
+      <div className="pointer-events-auto flex max-h-[5.25rem] w-[min(8.25rem,38vw)] flex-col gap-1 overflow-y-auto sm:max-h-none sm:w-[min(14.5rem,44vw)] sm:gap-2">
+        <aside className="border border-[#e6cf94]/30 bg-[#140e0a]/80 px-2 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.38)] backdrop-blur-md sm:px-3.5 sm:py-3">
           <p className="text-[10px] tracking-[0.42em] text-[#d4b896]/55">評価値</p>
-          <p className="mt-1 font-[family-name:var(--font-display)] text-[1.85rem] leading-none tracking-wide text-[#f6ead0] tabular-nums">
+          <p className="mt-1 font-[family-name:var(--font-display)] text-xl leading-none tracking-wide text-[#f6ead0] tabular-nums sm:text-[1.85rem]">
             {current ? formatEval(current) : pending || hints?.pending ? "…" : "–"}
           </p>
           <div className="relative mt-3 h-1.5 overflow-hidden bg-black/45">
@@ -430,7 +437,7 @@ function FreeReview({
           <p className="mt-2 text-[10px] tracking-[0.22em] text-[#d4b896]/70">{evalAdvantage(current)}</p>
         </aside>
         {hints && (
-          <aside className="border border-[#e6cf94]/30 bg-[#140e0a]/80 px-3.5 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.38)] backdrop-blur-md">
+          <aside className="border border-[#e6cf94]/30 bg-[#140e0a]/80 px-2 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.38)] backdrop-blur-md sm:px-3.5 sm:py-3">
             <p className="text-[10px] tracking-[0.42em] text-[#d4b896]/55">{hints.opponent ? "相手の最善手" : "最善手"}</p>
             {hints.pending && hints.moves.length === 0 ? (
               <p className="mt-2 text-[12px] tracking-[0.14em] text-[#d4b896]/70">考えています…</p>
@@ -453,7 +460,7 @@ function FreeReview({
         )}
       </div>
 
-      <aside className="pointer-events-auto flex max-h-[min(22rem,46vh)] w-[min(19rem,48vw)] flex-col border border-[#e6cf94]/30 bg-[#140e0a]/80 shadow-[0_16px_40px_rgba(0,0,0,0.38)] backdrop-blur-md">
+      <aside className="pointer-events-auto flex max-h-[5.25rem] w-[min(9rem,42vw)] flex-col border border-[#e6cf94]/30 bg-[#140e0a]/80 shadow-[0_16px_40px_rgba(0,0,0,0.38)] backdrop-blur-md sm:max-h-[min(22rem,46vh)] sm:w-[min(19rem,48vw)]">
         <div className="flex items-baseline justify-between px-3 pt-2.5 pb-1.5">
           <p className="text-[10px] tracking-[0.42em] text-[#d4b896]/55">棋譜</p>
           <p className="text-[10px] tracking-[0.18em] text-[#e6cf94]/70 tabular-nums">
@@ -899,22 +906,24 @@ function GameScreen({
       hints={studyKey ? { pending: hintsPending, moves: hints ?? [], opponent: shown.turn === "gote" } : null}
       onJump={jump}
       onUndo={undo}
+      dock={view === "2d" ? "bottom" : "top"}
     />
   ) : null;
 
   const header = (
-    <header className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p className="text-xs tracking-[0.35em] text-[#d4b896]/65">SHOGI</p>
-            <h1 className="flex items-baseline gap-3 font-[family-name:var(--font-display)] text-2xl tracking-widest">
+    <header className="flex flex-nowrap items-center justify-between gap-2 overflow-x-auto">
+      <div className="shrink-0">
+        <p className="hidden text-xs tracking-[0.35em] text-[#d4b896]/65 sm:block">SHOGI</p>
+            <h1 className="flex items-baseline gap-2 font-[family-name:var(--font-display)] text-lg tracking-widest sm:gap-3 sm:text-2xl">
               将棋
-              <span className="border border-[#d4b896]/35 px-2 py-0.5 font-[family-name:var(--font-body)] text-[10px] tracking-[0.2em] text-[#e6cf94]">
+              <span className="border border-[#d4b896]/35 px-1.5 py-0.5 font-[family-name:var(--font-body)] text-[10px] tracking-[0.16em] text-[#e6cf94] sm:px-2 sm:tracking-[0.2em]">
                 {story ? story.label : AI_RANKS[level].label}
               </span>
             </h1>
+        <p className="max-w-[11rem] truncate text-[10px] leading-tight text-[#d4b896]/75 sm:hidden">{status}</p>
       </div>
-      <div className="flex items-center gap-3">
-        <p className="max-w-[14rem] text-right text-xs text-[#d4b896]/75 sm:max-w-none">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+        <p className="hidden max-w-none text-right text-xs text-[#d4b896]/75 sm:block">
           {story && <span className="mb-0.5 block text-[10px] tracking-widest text-[#e6cf94]/80">対 {story.opponent}</span>}
           {status}
         </p>
@@ -927,7 +936,7 @@ function GameScreen({
               aria-checked={view === key}
               onClick={() => onViewChange(key)}
               className={[
-                "px-3 py-1 text-xs tracking-widest transition",
+                "px-2 py-1 text-[11px] tracking-widest transition sm:px-3 sm:text-xs",
                 view === key ? "bg-[#d4b896]/25 text-[#f3e3b8]" : "text-[#d4b896]/60 hover:text-[#f0e2c8]",
               ].join(" ")}
             >
@@ -939,7 +948,7 @@ function GameScreen({
           <button
             type="button"
             onClick={() => setTableOpen(true)}
-            className="shrink-0 border border-[#d4b896]/25 px-3 py-1 text-xs tracking-widest hover:border-[#d4b896]/50"
+            className="shrink-0 border border-[#d4b896]/25 px-2 py-1 text-[11px] tracking-widest hover:border-[#d4b896]/50 sm:px-3 sm:text-xs"
           >
             {story.career.path === "pro" ? "順位表" : "席次"}
           </button>
@@ -955,7 +964,7 @@ function GameScreen({
             setSoundOn((v) => !v);
           }}
           className={[
-            "shrink-0 border px-3 py-1 text-xs tracking-widest transition",
+            "shrink-0 border px-2 py-1 text-[11px] tracking-widest transition sm:px-3 sm:text-xs",
             soundOn
               ? "border-[#d4b896]/25 hover:border-[#d4b896]/50"
               : "border-[#d4b896]/15 text-[#d4b896]/45 hover:text-[#f0e2c8]",
@@ -966,7 +975,7 @@ function GameScreen({
         <button
           type="button"
           onClick={onExit}
-          className="shrink-0 border border-[#d4b896]/25 px-3 py-1 text-xs tracking-widest hover:border-[#d4b896]/50"
+          className="shrink-0 border border-[#d4b896]/25 px-2 py-1 text-[11px] tracking-widest hover:border-[#d4b896]/50 sm:px-3 sm:text-xs"
         >
           タイトル
         </button>
@@ -1048,10 +1057,10 @@ function GameScreen({
   if (view === "3d") {
     return (
       <div
-        className="relative h-dvh min-h-[520px] overflow-clip bg-[#120c08] text-[#f0e2c8]"
+        className="relative h-dvh overflow-clip bg-[#120c08] text-[#f0e2c8]"
         onPointerDown={() => soundOn && primeAudio()}
       >
-        <div className="relative z-10 mx-auto grid h-full w-full grid-rows-[auto_minmax(0,1fr)] gap-2 px-3 py-3 sm:px-6">
+        <div className="relative z-10 mx-auto grid h-full min-h-0 w-full grid-rows-[auto_minmax(0,1fr)] gap-1 px-1.5 py-1.5 sm:gap-2 sm:px-6 sm:py-3">
           {header}
           <div className="relative min-h-0 overflow-hidden rounded-md shadow-[inset_0_0_60px_rgba(0,0,0,0.6)]">
             <Shogi3DBoard
@@ -1077,7 +1086,7 @@ function GameScreen({
 
   return (
     <div
-      className="relative min-h-screen overflow-x-hidden overflow-y-auto bg-[#120c08] text-[#f0e2c8]"
+      className="relative h-dvh overflow-hidden bg-[#120c08] text-[#f0e2c8]"
       onPointerDown={() => soundOn && primeAudio()}
     >
       <div
@@ -1085,12 +1094,12 @@ function GameScreen({
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#2e1c10_0%,_#120c08_55%,_#070504_100%)]"
       />
 
-      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-3xl grid-rows-[auto_4.75rem_minmax(0,1fr)_4.75rem] gap-3 px-3 py-4 sm:px-6 sm:py-6">
+      <div className="relative z-10 mx-auto grid h-full min-h-0 w-full max-w-3xl grid-rows-[auto_3.15rem_minmax(0,1fr)_3.15rem] gap-1.5 px-1.5 py-1.5 sm:px-6 [@media(min-height:700px)]:grid-rows-[auto_4.75rem_minmax(0,1fr)_4.75rem] [@media(min-height:700px)]:gap-3 [@media(min-height:700px)]:py-6">
         {header}
 
         <div className="flex items-stretch gap-2">
-          <div className="flex w-16 shrink-0 flex-col items-center justify-center">
-            <Portrait person={across} className="h-14 w-12" />
+          <div className="flex w-11 shrink-0 flex-col items-center justify-center sm:w-16">
+            <Portrait person={across} className="h-9 w-8 sm:h-14 sm:w-12" />
             <p className="mt-0.5 max-w-full truncate text-[9px] tracking-widest text-[#d4b896]/75">{across.name}</p>
           </div>
           <div className="min-w-0 flex-1">
@@ -1104,8 +1113,8 @@ function GameScreen({
           </div>
         </div>
 
-        <div className="flex min-h-0 items-center justify-center">
-          <div className="shogi-table w-full max-w-[min(100%,540px)] p-[10px] sm:p-4">
+        <div className="flex min-h-0 items-center justify-center [container-type:size]">
+          <div className="shogi-table w-[min(100cqw,calc(100cqh-0.85rem),540px)] p-1.5 [@media(min-height:700px)]:w-[min(100cqw,calc(100cqh-2rem),540px)] [@media(min-height:700px)]:p-4">
             <div className="shogi-board relative aspect-square w-full overflow-hidden">
               <BoardStars />
               <div className="relative z-[2] grid h-full w-full grid-cols-9 grid-rows-9">

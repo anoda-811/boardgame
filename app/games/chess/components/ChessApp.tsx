@@ -65,7 +65,7 @@ function CapturedTray({
   );
 
   return (
-    <div className="chess-tray flex h-[4.25rem] flex-col justify-center overflow-hidden rounded-sm px-3 py-2">
+    <div className="chess-tray flex h-full flex-col justify-center overflow-hidden rounded-sm px-2 py-1 sm:px-3 sm:py-2">
       <div className="mb-1 flex shrink-0 items-baseline justify-between">
         <p className="text-[10px] tracking-[0.3em] text-[#c9a860]/70">{label}</p>
         {advantage > 0 && (
@@ -357,26 +357,27 @@ function GameScreen({
     Boolean(a && a.r === r && a.c === c);
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#0b0e13] text-[#efe6d2]">
+    <div className="relative h-dvh overflow-hidden bg-[#0b0e13] text-[#efe6d2]">
       <ChessDefs />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#1c2530_0%,_#0b0e13_55%,_#050608_100%)]"
       />
 
-      <div className="relative z-10 mx-auto grid h-dvh min-h-[520px] w-full max-w-3xl grid-rows-[auto_4.25rem_minmax(0,1fr)_4.25rem] gap-3 px-3 py-3 sm:px-6 sm:py-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs tracking-[0.35em] text-[#c9a860]/65">CHESS</p>
-            <h1 className="flex items-baseline gap-3 font-[family-name:var(--font-display)] text-2xl tracking-widest">
+      <div className="relative z-10 mx-auto grid h-full min-h-0 w-full max-w-3xl grid-rows-[auto_3.05rem_minmax(0,1fr)_3.05rem] gap-1.5 px-1.5 py-1.5 sm:px-6 [@media(min-height:700px)]:grid-rows-[auto_4.25rem_minmax(0,1fr)_4.25rem] [@media(min-height:700px)]:gap-3 [@media(min-height:700px)]:py-4">
+        <header className="flex flex-nowrap items-center justify-between gap-2 overflow-x-auto">
+          <div className="shrink-0">
+            <p className="hidden text-xs tracking-[0.35em] text-[#c9a860]/65 sm:block">CHESS</p>
+            <h1 className="flex items-baseline gap-2 font-[family-name:var(--font-display)] text-lg tracking-widest sm:gap-3 sm:text-2xl">
               チェス
-              <span className="border border-[#c9a860]/35 px-2 py-0.5 font-[family-name:var(--font-body)] text-[10px] tracking-[0.2em] text-[#e6cf94]">
+              <span className="border border-[#c9a860]/35 px-1.5 py-0.5 font-[family-name:var(--font-body)] text-[10px] tracking-[0.16em] text-[#e6cf94] sm:px-2 sm:tracking-[0.2em]">
                 {LEVELS[state.level].label}
               </span>
             </h1>
+            <p className="max-w-[11rem] truncate text-[10px] leading-tight text-[#c9a860]/75 sm:hidden">{state.message}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <p className="max-w-[14rem] text-right text-xs text-[#c9a860]/75 sm:max-w-none">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+            <p className="hidden text-right text-xs text-[#c9a860]/75 sm:block">
               {state.message}
             </p>
             <div className="flex shrink-0 border border-[#c9a860]/25" role="radiogroup" aria-label="表示モード">
@@ -388,7 +389,7 @@ function GameScreen({
                   aria-checked={view === key}
                   onClick={() => onViewChange(key)}
                   className={[
-                    "px-3 py-1 text-xs tracking-widest transition",
+                    "px-2 py-1 text-[11px] tracking-widest transition sm:px-3 sm:text-xs",
                     view === key
                       ? "bg-[#c9a860]/25 text-[#f3e3b8]"
                       : "text-[#c9a860]/60 hover:text-[#efe6d2]",
@@ -409,7 +410,7 @@ function GameScreen({
                 setSoundOn((v) => !v);
               }}
               className={[
-                "shrink-0 border px-3 py-1 text-xs tracking-widest transition",
+                "shrink-0 border px-2 py-1 text-[11px] tracking-widest transition sm:px-3 sm:text-xs",
                 soundOn
                   ? "border-[#c9a860]/25 hover:border-[#c9a860]/50"
                   : "border-[#c9a860]/15 text-[#c9a860]/45 hover:text-[#efe6d2]",
@@ -420,7 +421,7 @@ function GameScreen({
             <button
               type="button"
               onClick={onExit}
-              className="shrink-0 border border-[#c9a860]/25 px-3 py-1 text-xs tracking-widest hover:border-[#c9a860]/50"
+              className="shrink-0 border border-[#c9a860]/25 px-2 py-1 text-[11px] tracking-widest hover:border-[#c9a860]/50 sm:px-3 sm:text-xs"
             >
               タイトル
             </button>
@@ -450,7 +451,7 @@ function GameScreen({
               />
             </div>
           ) : (
-          <div className="chess-frame w-[min(100cqw,100cqh,560px)] p-[18px] sm:p-6">
+          <div className="chess-frame w-[min(100cqw,calc(100cqh-1.6rem),560px)] p-2 [@media(min-height:700px)]:w-[min(100cqw,calc(100cqh-3rem),560px)] [@media(min-height:700px)]:p-6">
             <div className="relative">
               <div className="chess-board grid aspect-square w-full grid-cols-8 grid-rows-8 overflow-hidden">
                 {board.map((row, r) =>
@@ -471,7 +472,7 @@ function GameScreen({
                 )}
               </div>
 
-              <div className="pointer-events-none absolute -bottom-[16px] left-0 right-0 grid grid-cols-8 sm:-bottom-[21px]">
+              <div className="pointer-events-none absolute -bottom-[12px] left-0 right-0 grid grid-cols-8 sm:-bottom-[21px]">
                 {FILES.map((f) => (
                   <span
                     key={f}
@@ -481,7 +482,7 @@ function GameScreen({
                   </span>
                 ))}
               </div>
-              <div className="pointer-events-none absolute -left-[13px] bottom-0 top-0 grid grid-rows-8 sm:-left-[17px]">
+              <div className="pointer-events-none absolute -left-[11px] bottom-0 top-0 grid grid-rows-8 sm:-left-[17px]">
                 {Array.from({ length: 8 }, (_, i) => (
                   <span
                     key={i}

@@ -55,6 +55,16 @@ const STAND_POS: Record<Side, V3> = {
   gote: [-(BOARD_W / 2 + STAND_SIZE / 2 + 0.55), STAND_TOP, -3.2],
 };
 const CAMERA_POSITION: V3 = [0, 12.4, 7.6];
+
+/** Wider view on a narrow screen. The camera stays put so it remains under the ceiling. */
+function viewFov(base: number) {
+  if (typeof window === "undefined" || !window.matchMedia("(max-width: 760px)").matches) return base;
+  const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+  const halfV = (base * Math.PI) / 360;
+  const halfH = Math.atan(Math.tan(halfV) * 1.35);
+  const fitted = (Math.atan(Math.tan(halfH) / Math.max(0.42, aspect)) * 360) / Math.PI;
+  return Math.min(100, Math.max(base, fitted));
+}
 const CAMERA_TARGET: V3 = [0, 0.2, 0.2];
 const CAMERA_FOV = 48;
 
@@ -1074,15 +1084,23 @@ function CameraRig({ locked, resetToken }: { locked: boolean; resetToken: number
   const camera = useThree((s) => s.camera);
 
   useEffect(() => {
+    const fit = () => {
+      if (!(camera instanceof THREE.PerspectiveCamera)) return;
+      const next = viewFov(CAMERA_FOV);
+      if (Math.abs(camera.fov - next) > 0.05) {
+        camera.fov = next;
+        camera.updateProjectionMatrix();
+      }
+    };
     camera.position.set(...CAMERA_POSITION);
-    if (camera instanceof THREE.PerspectiveCamera) {
-      camera.fov = CAMERA_FOV;
-      camera.updateProjectionMatrix();
-    }
+    fit();
     camera.lookAt(...CAMERA_TARGET);
-    if (!controls.current) return;
-    controls.current.target.set(...CAMERA_TARGET);
-    controls.current.update();
+    if (controls.current) {
+      controls.current.target.set(...CAMERA_TARGET);
+      controls.current.update();
+    }
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
   }, [resetToken, camera]);
 
   return (
@@ -2254,7 +2272,7 @@ export default function Shogi3DBoard(props: Shogi3DBoardProps) {
         <Scene {...props} locked={locked} resetToken={resetToken} />
       </Canvas>
 
-      <div className="absolute bottom-3 left-3 flex gap-2">
+      <div className="absolute right-2 bottom-2 flex gap-1.5 sm:bottom-3 sm:left-3 sm:right-auto sm:gap-2">
         <button
           type="button"
           aria-pressed={locked}
@@ -2276,7 +2294,7 @@ export default function Shogi3DBoard(props: Shogi3DBoardProps) {
           視点リセット
         </button>
       </div>
-      <p className="pointer-events-none absolute bottom-4 right-3 text-[10px] tracking-widest text-[#d4b896]/45">
+      <p className="pointer-events-none absolute right-3 bottom-4 hidden text-[10px] tracking-widest text-[#d4b896]/45 sm:block">
         {locked ? "固定を外すとドラッグで視点を回せます" : "ドラッグで視点回転・ホイールで拡大縮小"}
       </p>
     </div>

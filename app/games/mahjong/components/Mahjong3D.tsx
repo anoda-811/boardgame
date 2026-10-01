@@ -36,6 +36,17 @@ const HAND_Z = 7.25;
 const TABLE = 8.9;
 const CAMERA_POSITION: [number, number, number] = [0, 16, 13.8];
 const CAMERA_TARGET: [number, number, number] = [0, 0, 1.9];
+const CAMERA_FOV = 40;
+
+/** Wider view on a narrow screen so the hand stays inside the portrait frame. */
+function viewFov(base: number) {
+  if (typeof window === "undefined" || !window.matchMedia("(max-width: 760px)").matches) return base;
+  const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+  const halfV = (base * Math.PI) / 360;
+  const halfH = Math.atan(Math.tan(halfV) * 0.92);
+  const fitted = (Math.atan(Math.tan(halfH) / Math.max(0.42, aspect)) * 360) / Math.PI;
+  return Math.min(78, Math.max(base, fitted));
+}
 
 /* ---------- shared resources ---------- */
 
@@ -533,10 +544,22 @@ function CameraRig({ locked, resetToken }: { locked: boolean; resetToken: number
   const camera = useThree((s) => s.camera);
 
   useEffect(() => {
-    if (resetToken === 0 || !controls.current) return;
-    camera.position.set(...CAMERA_POSITION);
-    controls.current.target.set(...CAMERA_TARGET);
-    controls.current.update();
+    const fit = () => {
+      if (!(camera instanceof THREE.PerspectiveCamera)) return;
+      const next = viewFov(CAMERA_FOV);
+      if (Math.abs(camera.fov - next) > 0.05) {
+        camera.fov = next;
+        camera.updateProjectionMatrix();
+      }
+    };
+    fit();
+    if (resetToken !== 0 && controls.current) {
+      camera.position.set(...CAMERA_POSITION);
+      controls.current.target.set(...CAMERA_TARGET);
+      controls.current.update();
+    }
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
   }, [resetToken, camera]);
 
   return (
@@ -609,14 +632,14 @@ export default function Mahjong3D(props: Mahjong3DProps) {
       <Canvas
         shadows="percentage"
         dpr={[1, 2]}
-        camera={{ position: CAMERA_POSITION, fov: 40 }}
+        camera={{ position: CAMERA_POSITION, fov: CAMERA_FOV }}
         gl={{ antialias: true }}
       >
         <color attach="background" args={["#0a0f0c"]} />
         <Scene {...props} locked={locked} resetToken={resetToken} />
       </Canvas>
 
-      <div className="absolute bottom-3 left-3 z-10 flex gap-2">
+      <div className="absolute right-2 bottom-2 z-10 flex gap-1.5 sm:bottom-3 sm:left-3 sm:right-auto sm:gap-2">
         <button
           type="button"
           aria-pressed={locked}

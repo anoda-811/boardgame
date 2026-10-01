@@ -153,7 +153,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       className={[
-        "animate-fade-up flex items-center gap-2 border px-5 py-2.5 font-[family-name:var(--font-display)] text-lg tracking-[0.25em] shadow-[0_8px_24px_rgba(0,0,0,0.5)] backdrop-blur-sm transition",
+        "animate-fade-up flex items-center gap-1.5 border px-3 py-1.5 font-[family-name:var(--font-display)] text-base tracking-[0.2em] shadow-[0_8px_24px_rgba(0,0,0,0.5)] backdrop-blur-sm transition sm:gap-2 sm:px-5 sm:py-2.5 sm:text-lg sm:tracking-[0.25em]",
         tone === "red"
           ? "border-[#ff9a7a]/70 bg-[#b3261e]/80 text-white hover:bg-[#c9352b]"
           : tone === "gold"
@@ -428,26 +428,26 @@ function GameScreen({
 
   return (
     <div
-      className="relative h-dvh min-h-[560px] overflow-clip bg-[#07100b] text-[#efe6d2]"
+      className="relative h-dvh overflow-clip bg-[#07100b] text-[#efe6d2]"
       onPointerDown={() => soundOn && primeTileAudio()}
     >
       <div className="absolute inset-0">
         <Mahjong3D state={state} selectable={selectable} revealed={revealed} onTileClick={onTileClick} />
       </div>
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-gradient-to-b from-black/60 to-transparent px-4 pb-8 pt-3">
-        <div className="pointer-events-auto">
-          <p className="text-xs tracking-[0.35em] text-[#c9a860]/65">MAHJONG</p>
-          <h1 className="flex items-baseline gap-3 font-[family-name:var(--font-display)] text-2xl tracking-widest">
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 overflow-x-auto bg-gradient-to-b from-black/70 to-transparent px-2 pt-2 pb-5 sm:items-start sm:gap-3 sm:px-4 sm:pt-3 sm:pb-8">
+        <div className="pointer-events-auto shrink-0">
+          <p className="hidden text-xs tracking-[0.35em] text-[#c9a860]/65 sm:block">MAHJONG</p>
+          <h1 className="flex items-baseline gap-2 font-[family-name:var(--font-display)] text-lg tracking-widest sm:gap-3 sm:text-2xl">
             麻雀
-            <span className="border border-[#c9a860]/35 px-2 py-0.5 font-[family-name:var(--font-body)] text-[10px] tracking-[0.2em] text-[#e6cf94]">
+            <span className="border border-[#c9a860]/35 px-1.5 py-0.5 font-[family-name:var(--font-body)] text-[10px] tracking-[0.16em] text-[#e6cf94] sm:px-2 sm:tracking-[0.2em]">
               {roundLabel(state)} {state.honba}本場
             </span>
           </h1>
         </div>
-        <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-3">
-          <div className="flex items-center gap-2 border border-[#c9a860]/25 bg-black/40 px-2 py-1 text-[10px] tracking-widest text-[#c9a860]/80">
-            ドラ表示
+        <div className="pointer-events-auto flex shrink-0 flex-nowrap items-center justify-end gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1 border border-[#c9a860]/25 bg-black/40 px-1.5 py-0.5 text-[10px] tracking-widest text-[#c9a860]/80 sm:gap-2 sm:px-2 sm:py-1">
+            <span className="hidden sm:inline">ドラ表示</span>
             {dora.map((t) => (
               <TileImage key={t.id} tile={t} size={20} />
             ))}
@@ -463,7 +463,7 @@ function GameScreen({
               setSoundOn((v) => !v);
             }}
             className={[
-              "border bg-black/40 px-3 py-1 text-xs tracking-widest transition",
+              "border bg-black/40 px-2 py-1 text-[11px] tracking-widest transition sm:px-3 sm:text-xs",
               soundOn ? "border-[#c9a860]/35" : "border-[#c9a860]/15 text-[#c9a860]/45",
             ].join(" ")}
           >
@@ -472,24 +472,24 @@ function GameScreen({
           <button
             type="button"
             onClick={onExit}
-            className="border border-[#c9a860]/35 bg-black/40 px-3 py-1 text-xs tracking-widest"
+            className="border border-[#c9a860]/35 bg-black/40 px-2 py-1 text-[11px] tracking-widest sm:px-3 sm:text-xs"
           >
             タイトル
           </button>
         </div>
       </header>
 
-      <div className="pointer-events-none absolute inset-x-0 top-[5.5rem] z-10 flex justify-center">
+      <div className="pointer-events-none absolute inset-x-0 top-[2.7rem] z-10 flex justify-center px-2 sm:top-[5.5rem]">
         <p
           key={state.message}
-          className="animate-fade-up border border-[#c9a860]/25 bg-black/55 px-4 py-1.5 text-sm tracking-widest text-[#f3e3b8] backdrop-blur-sm"
+          className="animate-fade-up max-w-full border border-[#c9a860]/25 bg-black/55 px-2 py-1 text-xs tracking-widest text-[#f3e3b8] backdrop-blur-sm sm:px-4 sm:py-1.5 sm:text-sm"
           style={{ animationDuration: "0.3s" }}
         >
           {riichiMode ? "リーチ宣言牌を選んでください" : state.message}
         </p>
       </div>
 
-      <div className="absolute inset-x-0 bottom-[30%] z-20 flex flex-wrap justify-center gap-3 px-4 sm:bottom-[27%]">
+      <div className="absolute inset-x-0 top-[4.6rem] z-20 flex flex-wrap justify-center gap-1.5 px-2 sm:top-auto sm:bottom-[27%] sm:gap-3 sm:px-4">
         {myTurn && tsumo && <ActionButton tone="red" onClick={() => setState(declareTsumo)}>ツモ</ActionButton>}
         {myTurn && tsumo && humanRiichi && (
           <ActionButton tone="plain" onClick={() => setState((s) => discardTile(s, s.drawnId!))}>

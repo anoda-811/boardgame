@@ -18,6 +18,17 @@ export type Chess3DBoardProps = {
 const BOARD_TOP = 0.06;
 const CAMERA_POSITION: [number, number, number] = [0, 9.2, 9.4];
 const CAMERA_TARGET: [number, number, number] = [0, 0, 0.3];
+const CAMERA_FOV = 38;
+
+/** Wider view on a narrow screen so the board stays inside the portrait frame. */
+function viewFov(base: number) {
+  if (typeof window === "undefined" || !window.matchMedia("(max-width: 760px)").matches) return base;
+  const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+  const halfV = (base * Math.PI) / 360;
+  const halfH = Math.atan(Math.tan(halfV) * 0.9);
+  const fitted = (Math.atan(Math.tan(halfH) / Math.max(0.42, aspect)) * 360) / Math.PI;
+  return Math.min(78, Math.max(base, fitted));
+}
 
 function squareX(c: number) {
   return c - 3.5;
@@ -410,10 +421,22 @@ function CameraRig({ locked, resetToken }: { locked: boolean; resetToken: number
   const camera = useThree((s) => s.camera);
 
   useEffect(() => {
-    if (resetToken === 0 || !controls.current) return;
-    camera.position.set(...CAMERA_POSITION);
-    controls.current.target.set(...CAMERA_TARGET);
-    controls.current.update();
+    const fit = () => {
+      if (!(camera instanceof THREE.PerspectiveCamera)) return;
+      const next = viewFov(CAMERA_FOV);
+      if (Math.abs(camera.fov - next) > 0.05) {
+        camera.fov = next;
+        camera.updateProjectionMatrix();
+      }
+    };
+    fit();
+    if (resetToken !== 0 && controls.current) {
+      camera.position.set(...CAMERA_POSITION);
+      controls.current.target.set(...CAMERA_TARGET);
+      controls.current.update();
+    }
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
   }, [resetToken, camera]);
 
   return (
@@ -652,13 +675,13 @@ export default function Chess3DBoard(props: Chess3DBoardProps) {
       <Canvas
         shadows="percentage"
         dpr={[1, 2]}
-        camera={{ position: CAMERA_POSITION, fov: 38 }}
+        camera={{ position: CAMERA_POSITION, fov: CAMERA_FOV }}
         gl={{ antialias: true }}
       >
         <Scene {...props} locked={locked} resetToken={resetToken} />
       </Canvas>
 
-      <div className="absolute left-3 top-3 flex gap-2">
+      <div className="absolute top-2 left-2 flex gap-1.5 sm:top-3 sm:left-3 sm:gap-2">
         <button
           type="button"
           aria-pressed={locked}
@@ -680,7 +703,7 @@ export default function Chess3DBoard(props: Chess3DBoardProps) {
           視点リセット
         </button>
       </div>
-      <p className="pointer-events-none absolute bottom-2 right-3 text-[10px] tracking-widest text-[#c9a860]/45">
+      <p className="pointer-events-none absolute right-3 bottom-2 hidden text-[10px] tracking-widest text-[#c9a860]/45 sm:block">
         {locked
           ? "固定を外すとドラッグで視点を回せます"
           : "ドラッグで視点回転・ホイールで拡大縮小"}
