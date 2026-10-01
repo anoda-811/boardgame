@@ -808,7 +808,10 @@ function GameScreen({
       const snapshot = stateRef.current;
       if (!alive || !atTipRef.current || snapshot.phase !== "playing" || snapshot.turn !== "gote") return;
       void (async () => {
-        const decision = await requestEngineMove(snapshot.board, snapshot.hands, snapshot.turn, level);
+        const decision = await Promise.race([
+          requestEngineMove(snapshot.board, snapshot.hands, snapshot.turn, level),
+          new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 12000)),
+        ]);
         if (!alive || !atTipRef.current) return;
         const move = decision?.move ?? null;
         startTransition(() => {

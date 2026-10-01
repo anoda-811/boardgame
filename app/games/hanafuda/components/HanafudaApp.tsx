@@ -128,6 +128,7 @@ function GameScreen({
   const [, startTransition] = useTransition();
   const [soundOn, setSoundOn] = useState(true);
   const [yakuQueue, setYakuQueue] = useState<YakuFlash[]>([]);
+  const [settledCapture, setSettledCapture] = useState<string | null>(null);
   const seenYaku = useRef<{ player: Set<string>; opponent: Set<string> } | null>(null);
 
   const capturedKey = `${state.captured.player.map((card) => card.id).join(",")}|${state.captured.opponent.map((card) => card.id).join(",")}`;
@@ -139,6 +140,7 @@ function GameScreen({
     };
     const prev = seenYaku.current;
     seenYaku.current = current;
+    setSettledCapture(capturedKey);
     if (!prev) return;
     const fresh: YakuFlash[] = [];
     for (const who of sides) {
@@ -158,12 +160,7 @@ function GameScreen({
 
   const choosing = state.phase === "koikoi";
   const choiceYaku = choosing ? evaluateYaku(state.captured.player) : null;
-  useEffect(() => {
-    if (!choosing) return;
-    setYakuQueue((queue) => (queue.some((item) => item.who === "player") ? queue.filter((item) => item.who !== "player") : queue));
-  }, [choosing, yakuQueue]);
-
-  const showing = choosing ? undefined : yakuQueue[0];
+  const showing = yakuQueue[0];
   const awaitChoice = false;
   useEffect(() => {
     if (!showing || awaitChoice) return;
@@ -328,7 +325,7 @@ function GameScreen({
           }}
         />
       )}
-      {choiceYaku && choiceYaku.list.length > 0 && (
+      {choiceYaku && choiceYaku.list.length > 0 && !showing && settledCapture === capturedKey && (
         <YakuChoice
           entries={choiceYaku.list.map((yaku) => ({
             yaku,

@@ -164,6 +164,23 @@ let enginePromise: Promise<Engine | null> | null = null;
 let engine: Engine | null = null;
 let generation = 0;
 let queue: Promise<unknown> = Promise.resolve();
+let interruptors: Array<() => void> = [];
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => resolve(null), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        window.clearTimeout(timer);
+        resolve(null);
+      },
+    );
+  });
+}
 
 function loadFactory(): Promise<EngineFactory | null> {
   if (factoryPromise) return factoryPromise;
@@ -195,10 +212,12 @@ function collectUntilBest(
     const infos: PvLine[] = [];
     let finished = false;
     let grace = 0;
+    const cancel = () => finish("");
     const cleanup = () => {
       window.clearTimeout(timer);
       window.clearTimeout(grace);
       target.removeMessageListener(onLine);
+      interruptors = interruptors.filter((wake) => wake !== cancel);
     };
     const finish = (best: string) => {
       if (finished) return;
@@ -223,22 +242,27 @@ function collectUntilBest(
       if (!line.startsWith("bestmove")) return;
       finish(line);
     };
+    interruptors.push(cancel);
     target.addMessageListener(onLine);
   });
 }
 
 function waitFor(target: Engine, prefix: string, timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => {
-      target.removeMessageListener(onLine);
-      reject(new Error(`engine timeout: ${prefix}`));
-    }, timeoutMs);
-    const onLine = (line: string) => {
-      if (!line.startsWith(prefix)) return;
+    const done = (value: string | null, failed: boolean) => {
       window.clearTimeout(timer);
       target.removeMessageListener(onLine);
-      resolve(line);
+      interruptors = interruptors.filter((wake) => wake !== cancel);
+      if (failed) reject(new Error(`engine timeout: ${prefix}`));
+      else resolve(value ?? "");
     };
+    const cancel = () => done("", false);
+    const timer = window.setTimeout(() => done(null, true), timeoutMs);
+    const onLine = (line: string) => {
+      if (!line.startsWith(prefix)) return;
+      done(line, false);
+    };
+    interruptors.push(cancel);
     target.addMessageListener(onLine);
   });
 }
@@ -248,7 +272,8 @@ async function boot(): Promise<Engine | null> {
   if (typeof SharedArrayBuffer === "undefined") return null;
   const create = await loadFactory();
   if (!create) return null;
-  const created = await create();
+  const created = await withTimeout(create(), 12000);
+  if (!created) return null;
   const usiok = waitFor(created, "usiok", 20000);
   created.postMessage("usi");
   await usiok;
@@ -283,6 +308,9 @@ function enqueue<T>(task: () => Promise<T>): Promise<T> {
 export function cancelEngineSearch() {
   generation += 1;
   engine?.postMessage("stop");
+  const pending = interruptors;
+  interruptors = [];
+  for (const wake of pending) wake();
 }
 
 /** Ask YaneuraOu for a move. Null means the search was dropped or the engine is unavailable. */
