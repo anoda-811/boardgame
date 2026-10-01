@@ -120,8 +120,12 @@ function targetsForSelection(
   return [];
 }
 
-export function selectSquare(state: ShogiState, coord: Coord): ShogiState {
-  if (state.phase !== "playing" || state.turn !== "sente") return state;
+function turnPrompt(side: Side): string {
+  return side === "sente" ? "あなたの番です（先手）" : "相手の手を指せます";
+}
+
+export function selectSquare(state: ShogiState, coord: Coord, side: Side = "sente"): ShogiState {
+  if (state.phase !== "playing" || state.turn !== side) return state;
 
   // drop onto square
   if (state.selectedDrop) {
@@ -130,19 +134,17 @@ export function selectSquare(state: ShogiState, coord: Coord): ShogiState {
       piece: state.selectedDrop,
       to: coord,
     };
-    const applied = applyMove(state.board, state.hands, "sente", dropMove);
+    const applied = applyMove(state.board, state.hands, side, dropMove);
     if (!applied) {
       return { ...state, message: "そこには打てません" };
     }
-    return afterSenteMove(state, applied.board, applied.hands, {
-      to: coord,
-    });
+    return afterPlayerMove(state, applied.board, applied.hands, { to: coord }, side);
   }
 
   const piece = state.board[coord.r][coord.c];
 
   // click own piece to select / deselect
-  if (piece && piece.side === "sente") {
+  if (piece && piece.side === side) {
     if (
       state.selected &&
       state.selected.r === coord.r &&
@@ -153,7 +155,7 @@ export function selectSquare(state: ShogiState, coord: Coord): ShogiState {
         selected: null,
         selectedDrop: null,
         legalTargets: [],
-        message: "あなたの番です（先手）",
+        message: turnPrompt(side),
       };
     }
 
@@ -165,7 +167,7 @@ export function selectSquare(state: ShogiState, coord: Coord): ShogiState {
       legalTargets: targetsForSelection(
         state.board,
         state.hands,
-        "sente",
+        side,
         selected,
         null,
       ),
@@ -176,7 +178,7 @@ export function selectSquare(state: ShogiState, coord: Coord): ShogiState {
   // move to target
   if (state.selected) {
     const from = state.selected;
-    const legal = generateLegalMoves(state.board, state.hands, "sente").filter(
+    const legal = generateLegalMoves(state.board, state.hands, side).filter(
       (m) =>
         m.kind === "move" &&
         m.from.r === from.r &&
@@ -190,7 +192,7 @@ export function selectSquare(state: ShogiState, coord: Coord): ShogiState {
         ...state,
         selected: null,
         legalTargets: [],
-        message: "あなたの番です（先手）",
+        message: turnPrompt(side),
       };
     }
 
@@ -209,12 +211,9 @@ export function selectSquare(state: ShogiState, coord: Coord): ShogiState {
     }
 
     const move = legal[0];
-    const applied = applyMove(state.board, state.hands, "sente", move);
+    const applied = applyMove(state.board, state.hands, side, move);
     if (!applied) return state;
-    return afterSenteMove(state, applied.board, applied.hands, {
-      from,
-      to: coord,
-    });
+    return afterPlayerMove(state, applied.board, applied.hands, { from, to: coord }, side);
   }
 
   return state;
@@ -223,9 +222,10 @@ export function selectSquare(state: ShogiState, coord: Coord): ShogiState {
 export function selectDrop(
   state: ShogiState,
   piece: UnpromotedType,
+  side: Side = "sente",
 ): ShogiState {
-  if (state.phase !== "playing" || state.turn !== "sente") return state;
-  if (state.hands.sente[piece] <= 0) return state;
+  if (state.phase !== "playing" || state.turn !== side) return state;
+  if (state.hands[side][piece] <= 0) return state;
 
   const selectedDrop =
     state.selectedDrop === piece ? null : piece;
@@ -238,14 +238,14 @@ export function selectDrop(
       ? targetsForSelection(
           state.board,
           state.hands,
-          "sente",
+          side,
           null,
           selectedDrop,
         )
       : [],
     message: selectedDrop
       ? `${pieceLabel(selectedDrop)}の打ち場所を選んでください`
-      : "あなたの番です（先手）",
+      : turnPrompt(side),
   };
 }
 
@@ -264,9 +264,10 @@ function pieceLabel(p: UnpromotedType): string {
 
 export function choosePromote(state: ShogiState, promote: boolean): ShogiState {
   if (state.phase !== "promote" || !state.pendingPromote) return state;
+  const side = state.turn;
   const { from, to } = state.pendingPromote;
   const move: Move = { kind: "move", from, to, promote };
-  const applied = applyMove(state.board, state.hands, "sente", move);
+  const applied = applyMove(state.board, state.hands, side, move);
   if (!applied) {
     return {
       ...state,
@@ -275,46 +276,64 @@ export function choosePromote(state: ShogiState, promote: boolean): ShogiState {
       message: "不正な手です",
     };
   }
-  return afterSenteMove(state, applied.board, applied.hands, { from, to });
+  return afterPlayerMove(state, applied.board, applied.hands, { from, to }, side);
 }
 
-function afterSenteMove(
+function afterPlayerMove(
   state: ShogiState,
   board: Board,
   hands: Record<Side, Hand>,
   lastMove: { from?: Coord; to: Coord },
+  side: Side,
 ): ShogiState {
-  const stamped = { ...lastMove, by: "sente" as const };
-  const goteMoves = generateLegalMoves(board, hands, "gote");
-  if (goteMoves.length === 0) {
+  const next = opposite(side);
+  const stamped = { ...lastMove, by: side };
+  const replies = generateLegalMoves(board, hands, next);
+  if (replies.length === 0) {
+    const mate = inCheck(board, next);
     return {
       ...state,
       phase: "ended",
       board,
       hands,
-      turn: "gote",
+      turn: next,
       selected: null,
       selectedDrop: null,
       legalTargets: [],
       pendingPromote: null,
       lastMove: stamped,
-      winner: "sente",
-      message: inCheck(board, "gote") ? "詰みです！あなたの勝ち" : "相手が手数切れ？あなたの勝ち",
+      winner: side,
+      message:
+        side === "sente"
+          ? mate
+            ? "詰みです！あなたの勝ち"
+            : "相手が手数切れ？あなたの勝ち"
+          : mate
+            ? "詰みです。相手の勝ち"
+            : "手数切れ。相手の勝ち",
     };
   }
 
+  const check = inCheck(board, next);
   return {
     ...state,
     phase: "playing",
     board,
     hands,
-    turn: "gote",
+    turn: next,
     selected: null,
     selectedDrop: null,
     legalTargets: [],
     pendingPromote: null,
     lastMove: stamped,
-    message: inCheck(board, "gote") ? "王手！相手が考えています…" : "相手が考えています…",
+    message:
+      side === "sente"
+        ? check
+          ? "王手！相手が考えています…"
+          : "相手が考えています…"
+        : check
+          ? "王手です。あなたの番です"
+          : "あなたの番です（先手）",
   };
 }
 

@@ -2,9 +2,20 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition, type Ref } from "react";
 import { inCheck } from "@/lib/shogi/board";
-import { cancelEngineSearch, requestEngineMove } from "@/lib/shogi/engine";
+import { cancelEngineSearch, requestCandidateMoves, requestEngineMove, requestPositionEval } from "@/lib/shogi/engine";
+import {
+  describeCandidate,
+  describeMove,
+  compareSenteEval,
+  evalAdvantage,
+  evalShare,
+  formatEval,
+  positionKey,
+  quietPosition,
+  type SenteEval,
+} from "@/lib/shogi/kifu";
 import {
   AI_RANK_ORDER,
   AI_RANKS,
@@ -23,6 +34,7 @@ import {
   PIECE_LABEL,
   type Coord,
   type Piece,
+  type Side,
   type UnpromotedType,
 } from "@/lib/shogi/types";
 import { PieceStandPreview, PieceView } from "./PieceView";
@@ -358,6 +370,190 @@ function TitleScreen({
   );
 }
 
+type LineMark = { state: ShogiState; evaluation: SenteEval | null };
+type HintMove = { notation: string; evaluation: SenteEval };
+
+function FreeReview({
+  line,
+  cursor,
+  pending,
+  hints,
+  onJump,
+  onUndo,
+}: {
+  line: LineMark[];
+  cursor: number;
+  pending: boolean;
+  hints: { pending: boolean; moves: HintMove[]; opponent?: boolean } | null;
+  onJump: (index: number) => void;
+  onUndo: () => void;
+}) {
+  const current = line[cursor]?.evaluation ?? null;
+  const share = evalShare(current);
+  const towardSente = share > 0;
+  const span = Math.abs(share) * 50;
+  const activeRef = useRef<HTMLButtonElement>(null);
+  const atTip = cursor >= line.length - 1;
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "nearest" });
+  }, [cursor, line.length]);
+
+  const pairs: { n: number; sente: number; gote?: number }[] = [];
+  for (let i = 1; i < line.length; i += 2) {
+    pairs.push({ n: pairs.length + 1, sente: i, gote: i + 1 < line.length ? i + 1 : undefined });
+  }
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-[4.25rem] z-30 flex items-start justify-between gap-3 px-3 sm:px-5">
+      <div className="pointer-events-auto flex w-[min(14.5rem,44vw)] flex-col gap-2">
+        <aside className="border border-[#e6cf94]/30 bg-[#140e0a]/80 px-3.5 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.38)] backdrop-blur-md">
+          <p className="text-[10px] tracking-[0.42em] text-[#d4b896]/55">評価値</p>
+          <p className="mt-1 font-[family-name:var(--font-display)] text-[1.85rem] leading-none tracking-wide text-[#f6ead0] tabular-nums">
+            {current ? formatEval(current) : pending || hints?.pending ? "…" : "–"}
+          </p>
+          <div className="relative mt-3 h-1.5 overflow-hidden bg-black/45">
+            <span className="absolute top-0 left-1/2 h-full w-px bg-[#e6cf94]/55" />
+            {current && (
+              <span
+                className="absolute top-0 h-full"
+                style={{
+                  left: towardSente ? "50%" : `${50 - span}%`,
+                  width: `${span}%`,
+                  background: towardSente
+                    ? "linear-gradient(90deg, #c4a46a, #f3e3b8)"
+                    : "linear-gradient(90deg, #6e3a32, #c46a58)",
+                }}
+              />
+            )}
+          </div>
+          <p className="mt-2 text-[10px] tracking-[0.22em] text-[#d4b896]/70">{evalAdvantage(current)}</p>
+        </aside>
+        {hints && (
+          <aside className="border border-[#e6cf94]/30 bg-[#140e0a]/80 px-3.5 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.38)] backdrop-blur-md">
+            <p className="text-[10px] tracking-[0.42em] text-[#d4b896]/55">{hints.opponent ? "相手の最善手" : "最善手"}</p>
+            {hints.pending && hints.moves.length === 0 ? (
+              <p className="mt-2 text-[12px] tracking-[0.14em] text-[#d4b896]/70">考えています…</p>
+            ) : (
+              <ol className="mt-1.5 flex flex-col gap-1">
+                {hints.moves.map((hint, index) => (
+                  <li key={`${hint.notation}-${index}`} className="flex items-baseline justify-between gap-2">
+                    <span className="text-[13px] tracking-wider text-[#f6ead0]">
+                      <span className={index === 0 ? "mr-1.5 text-[#e6cf94]" : "mr-1.5 text-[#d4b896]/45"}>
+                        {index + 1}
+                      </span>
+                      {hint.notation}
+                    </span>
+                    <span className="shrink-0 text-[11px] text-[#e6cf94]/80 tabular-nums">{formatEval(hint.evaluation)}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </aside>
+        )}
+      </div>
+
+      <aside className="pointer-events-auto flex max-h-[min(22rem,46vh)] w-[min(19rem,48vw)] flex-col border border-[#e6cf94]/30 bg-[#140e0a]/80 shadow-[0_16px_40px_rgba(0,0,0,0.38)] backdrop-blur-md">
+        <div className="flex items-baseline justify-between px-3 pt-2.5 pb-1.5">
+          <p className="text-[10px] tracking-[0.42em] text-[#d4b896]/55">棋譜</p>
+          <p className="text-[10px] tracking-[0.18em] text-[#e6cf94]/70 tabular-nums">
+            {cursor === 0 ? "開始" : `${cursor}手目`}
+          </p>
+        </div>
+        <div className="grid grid-cols-[1.4rem_1fr_1fr] gap-x-1 px-2 pb-1 text-[9px] tracking-[0.2em] text-[#d4b896]/40">
+          <span />
+          <span>先手</span>
+          <span>後手</span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-1.5 [scrollbar-width:thin]">
+          <button
+            type="button"
+            ref={cursor === 0 ? activeRef : undefined}
+            onClick={() => onJump(0)}
+            className={[
+              "mb-0.5 w-full px-2 py-1 text-left text-[11px] tracking-[0.18em]",
+              cursor === 0 ? "bg-[#e6cf94]/15 text-[#f6ead0]" : "text-[#d4b896]/55 hover:bg-white/5",
+            ].join(" ")}
+          >
+            開始局面
+            <span className="ml-2 tabular-nums text-[#e6cf94]/80">{formatEval(line[0]?.evaluation ?? null)}</span>
+          </button>
+          {pairs.map((pair) => (
+            <div key={pair.n} className="grid grid-cols-[1.4rem_1fr_1fr] gap-x-1">
+              <span className="self-center text-center text-[10px] text-[#d4b896]/35 tabular-nums">{pair.n}</span>
+              <KifuCell
+                mark={line[pair.sente]}
+                before={line[pair.sente - 1].state}
+                active={cursor === pair.sente}
+                buttonRef={cursor === pair.sente ? activeRef : undefined}
+                onClick={() => onJump(pair.sente)}
+              />
+              {pair.gote != null ? (
+                <KifuCell
+                  mark={line[pair.gote]}
+                  before={line[pair.gote - 1].state}
+                  active={cursor === pair.gote}
+                  buttonRef={cursor === pair.gote ? activeRef : undefined}
+                  onClick={() => onJump(pair.gote!)}
+                />
+              ) : (
+                <span />
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 border-t border-[#e6cf94]/15">
+          <button
+            type="button"
+            disabled={cursor === 0}
+            onClick={onUndo}
+            className="px-2 py-2 text-[11px] tracking-[0.28em] text-[#f0e2c8] transition hover:bg-[#e6cf94]/10 disabled:text-[#d4b896]/25"
+          >
+            戻す
+          </button>
+          <button
+            type="button"
+            disabled={atTip}
+            onClick={() => onJump(cursor + 1)}
+            className="border-l border-[#e6cf94]/15 px-2 py-2 text-[11px] tracking-[0.28em] text-[#f0e2c8] transition hover:bg-[#e6cf94]/10 disabled:text-[#d4b896]/25"
+          >
+            進む
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function KifuCell({
+  mark,
+  before,
+  active,
+  buttonRef,
+  onClick,
+}: {
+  mark: LineMark;
+  before: ShogiState;
+  active: boolean;
+  buttonRef?: Ref<HTMLButtonElement>;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      ref={buttonRef}
+      onClick={onClick}
+      className={[
+        "my-0.5 flex items-baseline justify-between gap-1 px-1.5 py-1 text-left",
+        active ? "bg-[#e6cf94]/15 text-[#f6ead0]" : "text-[#f0e2c8]/85 hover:bg-white/5",
+      ].join(" ")}
+    >
+      <span className="text-[12px] tracking-wider">{describeMove(before, mark.state)}</span>
+      <span className="shrink-0 text-[10px] text-[#e6cf94]/75 tabular-nums">{formatEval(mark.evaluation)}</span>
+    </button>
+  );
+}
+
 function GameScreen({
   state,
   setState,
@@ -379,13 +575,208 @@ function GameScreen({
   const [soundOn, setSoundOn] = useState(true);
   const [tableOpen, setTableOpen] = useState(false);
   const across = story?.person ?? figureForRank(level);
+  const free = !story;
+  const [line, setLine] = useState<LineMark[]>(() => [{ state: quietPosition(state), evaluation: null }]);
+  const [cursor, setCursor] = useState(0);
+  const keyRef = useRef(positionKey(quietPosition(state)));
+  const atTipRef = useRef(true);
+  const lineRef = useRef(line);
+  lineRef.current = line;
+  const cursorRef = useRef(cursor);
+  cursorRef.current = cursor;
+  const evalBusy = useRef(new Set<number>());
+  const directEval = useRef(new Map<string, { epoch: number; evaluation: SenteEval }>());
+  const [evalPending, setEvalPending] = useState(false);
+  const [draft, setDraft] = useState<ShogiState | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+
+  const viewing = free && cursor < line.length - 1;
+  const shown = draft ?? (viewing ? line[Math.min(cursor, line.length - 1)].state : state);
+  const studyState =
+    shown.phase === "playing" && (shown.turn === "sente" || (viewing && shown.turn === "gote"))
+      ? quietPosition(shown)
+      : null;
+  const studyKey = studyState ? positionKey(studyState) : "";
+  const [hints, setHints] = useState<HintMove[] | null>(null);
+  const [hintsPending, setHintsPending] = useState(false);
+
+  useEffect(() => {
+    atTipRef.current = !free || cursor >= line.length - 1;
+  }, [free, cursor, line.length]);
+
+  useEffect(() => {
+    if (!free || state.phase === "promote" || state.phase === "title") return;
+    const key = positionKey(state);
+    if (!key || key === keyRef.current) return;
+    const tip = lineRef.current[lineRef.current.length - 1];
+    if (tip && positionKey(tip.state) === key) {
+      keyRef.current = key;
+      return;
+    }
+    keyRef.current = key;
+    const follow = atTipRef.current;
+    setLine((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && positionKey(last.state) === key) return prev;
+      return [...prev, { state: quietPosition(state), evaluation: directEval.current.get(key)?.epoch === 2 ? directEval.current.get(key)!.evaluation : null }];
+    });
+    if (follow) setCursor((c) => c + 1);
+  }, [free, state]);
+
+  const jump = (index: number) => {
+    const max = lineRef.current.length - 1;
+    const next = Math.max(0, Math.min(max, index));
+    atTipRef.current = next === max;
+    if (!atTipRef.current) cancelEngineSearch();
+    setDraft(null);
+    setCursor(next);
+  };
+
+  const undo = () => {
+    const marks = lineRef.current;
+    const from = atTipRef.current ? marks.length - 1 : cursor;
+    if (from <= 0) return;
+    const ended = marks[from]?.state.phase === "ended" && from === marks.length - 1;
+    if (!ended) {
+      jump(from - 1);
+      return;
+    }
+    let index = from - 1;
+    while (index > 0 && !(marks[index].state.turn === "sente" && marks[index].state.phase === "playing")) {
+      index -= 1;
+    }
+    jump(index);
+  };
+
+  useEffect(() => {
+    if (!free) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (draftRef.current?.phase === "promote" || stateRef.current.phase === "promote") return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
+      event.preventDefault();
+      const current = lineRef.current;
+      const max = current.length - 1;
+      const from = atTipRef.current ? max : cursor;
+      if (event.key === "ArrowLeft") undo();
+      else jump(from + 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [free, cursor]);
+
+  useEffect(() => {
+    if (!free) return;
+    const marks = lineRef.current;
+    const index = Math.min(cursor, marks.length - 1);
+    const liveThinking =
+      !viewing &&
+      marks[marks.length - 1]?.state.phase === "playing" &&
+      marks[marks.length - 1]?.state.turn === "gote";
+    const targets = (liveThinking ? [index] : [index, index - 1]).filter((i) => i >= 0);
+    const requestCursor = cursor;
+    for (const i of targets) {
+      const mark = marks[i];
+      if (!mark || evalBusy.current.has(i)) continue;
+      const pos = mark.state;
+      if (pos.phase === "promote" || pos.phase === "title") continue;
+      if (liveThinking && i === marks.length - 1) {
+        if (i === index) setEvalPending(true);
+        continue;
+      }
+      const key = positionKey(pos);
+      if (!key) continue;
+      const saved = directEval.current.get(key);
+      const locked = saved?.epoch === 2 ? saved.evaluation : null;
+      if (locked) {
+        if (mark.evaluation !== locked) {
+          setLine((prev) => {
+            const current = prev[i];
+            if (!current || positionKey(current.state) !== key || current.evaluation === locked) return prev;
+            const next = prev.slice();
+            next[i] = { ...current, evaluation: locked };
+            return next;
+          });
+        }
+        continue;
+      }
+      evalBusy.current.add(i);
+      if (i === index) setEvalPending(true);
+      void requestPositionEval(pos.board, pos.hands, pos.turn).then((evaluation) => {
+        evalBusy.current.delete(i);
+        if (i === requestCursor && cursorRef.current === requestCursor) setEvalPending(false);
+        if (!evaluation) return;
+        directEval.current.set(key, { epoch: 2, evaluation });
+        setLine((prev) => {
+          const current = prev[i];
+          if (!current || positionKey(current.state) !== key) return prev;
+          const next = prev.slice();
+          next[i] = { ...current, evaluation };
+          return next;
+        });
+      });
+    }
+    const shownKey = marks[index] ? positionKey(marks[index].state) : "";
+    if (shownKey && directEval.current.get(shownKey)?.epoch === 2) setEvalPending(false);
+  }, [free, cursor, viewing, line]);
+
+  useEffect(() => {
+    if (!free || !studyState) {
+      setHints(null);
+      setHintsPending(false);
+      return;
+    }
+    const pos = studyState;
+    const key = studyKey;
+    let alive = true;
+    setHints(null);
+    setHintsPending(true);
+    void requestCandidateMoves(pos.board, pos.hands, pos.turn).then((found) => {
+      if (!alive) return;
+      setHintsPending(false);
+      if (!found) return;
+      const ranked = found.moves.map((item) => ({
+        notation: describeCandidate(pos, item.move),
+        evaluation: item.evaluation,
+      }));
+      ranked.sort((a, b) =>
+        pos.turn === "gote"
+          ? compareSenteEval(a.evaluation, b.evaluation)
+          : compareSenteEval(b.evaluation, a.evaluation),
+      );
+      setHints(ranked);
+      const best = found.positionEval;
+      if (!best || directEval.current.get(key)?.epoch === 2) return;
+      setLine((prev) => {
+        let index = -1;
+        for (let i = prev.length - 1; i >= 0; i -= 1) {
+          if (positionKey(prev[i].state) === key) {
+            index = i;
+            break;
+          }
+        }
+        if (index < 0 || prev[index].evaluation) return prev;
+        const next = prev.slice();
+        next[index] = { ...next[index], evaluation: best };
+        return next;
+      });
+    });
+    return () => {
+      alive = false;
+      cancelEngineSearch();
+    };
+    // studyState matches studyKey; depending on the object would restart the search every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [free, studyKey]);
 
   const handCount = (["sente", "gote"] as const).reduce(
     (sum, side) => sum + Object.values(state.hands[side]).reduce((a, b) => a + b, 0),
     0,
   );
-  const stateRef = useRef(state);
-  stateRef.current = state;
   const soundRef = useRef({ on: soundOn, view, hands: handCount });
   useEffect(() => {
     soundRef.current.on = soundOn;
@@ -403,14 +794,16 @@ function GameScreen({
   }, [state.lastMove]);
 
   useEffect(() => {
+    if (viewing) return;
     if (state.phase !== "playing" || state.turn !== "gote") return;
     let alive = true;
     const timer = window.setTimeout(() => {
       const snapshot = stateRef.current;
-      if (!alive || snapshot.phase !== "playing" || snapshot.turn !== "gote") return;
+      if (!alive || !atTipRef.current || snapshot.phase !== "playing" || snapshot.turn !== "gote") return;
       void (async () => {
-        const move = await requestEngineMove(snapshot.board, snapshot.hands, snapshot.turn, level);
-        if (!alive) return;
+        const decision = await requestEngineMove(snapshot.board, snapshot.hands, snapshot.turn, level);
+        if (!alive || !atTipRef.current) return;
+        const move = decision?.move ?? null;
         startTransition(() => {
           setState((s) => {
             if (s.phase !== "playing" || s.turn !== "gote") return s;
@@ -428,17 +821,86 @@ function GameScreen({
       window.clearTimeout(timer);
       cancelEngineSearch();
     };
-  }, [state.phase, state.turn, setState, level]);
+  }, [state.phase, state.turn, setState, level, viewing]);
+
+  const play = (updater: (current: ShogiState) => ShogiState) => {
+    if (!free) {
+      setState(updater);
+      return;
+    }
+    const offTip = cursor < lineRef.current.length - 1;
+    const base =
+      draft ??
+      (offTip ? lineRef.current[Math.min(cursor, lineRef.current.length - 1)].state : stateRef.current);
+    const next = updater(base);
+    if (next === base) return;
+    const nextKey = positionKey(next);
+    const moved = nextKey !== "" && nextKey !== positionKey(base);
+    if (!moved) {
+      if (offTip || draft) setDraft(next);
+      else setState(next);
+      return;
+    }
+    if (offTip || draft) {
+      const cut = Math.min(cursor, lineRef.current.length - 1);
+      const kept = lineRef.current[cut];
+      keyRef.current = kept ? positionKey(kept.state) : "";
+      atTipRef.current = true;
+      soundRef.current.hands = (["sente", "gote"] as const).reduce(
+        (sum, side) => sum + Object.values(base.hands[side]).reduce((count, n) => count + n, 0),
+        0,
+      );
+      setDraft(null);
+      setLine((prev) => prev.slice(0, cut + 1));
+      setCursor(cut);
+      cancelEngineSearch();
+    }
+    setState(next);
+  };
 
   const isLastFrom = (r: number, c: number) =>
     Boolean(
-      state.lastMove?.from &&
-        state.lastMove.from.r === r &&
-        state.lastMove.from.c === c,
+      shown.lastMove?.from &&
+        shown.lastMove.from.r === r &&
+        shown.lastMove.from.c === c,
     );
   const isLastTo = (r: number, c: number) =>
-    Boolean(state.lastMove && state.lastMove.to.r === r && state.lastMove.to.c === c);
-  const opponentMove = state.lastMove?.by === "gote";
+    Boolean(shown.lastMove && shown.lastMove.to.r === r && shown.lastMove.to.c === c);
+  const opponentMove = shown.lastMove?.by === "gote";
+  const actor = (current: ShogiState): Side =>
+    viewing && current.turn === "gote" ? "gote" : "sente";
+  const goteHandsOn = viewing && shown.phase === "playing" && shown.turn === "gote";
+  const status = viewing && !draft
+    ? shown.phase === "playing"
+      ? shown.turn === "sente"
+        ? "この局面から指せます"
+        : "相手の手を指せます"
+      : shown.message
+    : shown.message;
+
+  const restart = () => {
+    const fresh = startGame();
+    const quiet = quietPosition(fresh);
+    keyRef.current = positionKey(quiet);
+    atTipRef.current = true;
+    evalBusy.current.clear();
+    setDraft(null);
+    setLine([{ state: quiet, evaluation: null }]);
+    setCursor(0);
+    setEvalPending(false);
+    setState(fresh);
+  };
+
+  const review = free ? (
+    <FreeReview
+      line={line}
+      cursor={cursor}
+      pending={evalPending && !line[cursor]?.evaluation}
+      hints={studyKey ? { pending: hintsPending, moves: hints ?? [], opponent: shown.turn === "gote" } : null}
+      onJump={jump}
+      onUndo={undo}
+    />
+  ) : null;
 
   const header = (
     <header className="flex flex-wrap items-center justify-between gap-3">
@@ -454,7 +916,7 @@ function GameScreen({
       <div className="flex items-center gap-3">
         <p className="max-w-[14rem] text-right text-xs text-[#d4b896]/75 sm:max-w-none">
           {story && <span className="mb-0.5 block text-[10px] tracking-widest text-[#e6cf94]/80">対 {story.opponent}</span>}
-          {state.message}
+          {status}
         </p>
         <div className="flex shrink-0 border border-[#d4b896]/25" role="radiogroup" aria-label="表示モード">
           {(["2d", "3d"] as ViewMode[]).map((key) => (
@@ -514,7 +976,7 @@ function GameScreen({
 
   const modals = (
     <>
-      {state.phase === "promote" && (
+      {shown.phase === "promote" && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]">
           <div className="w-full max-w-sm border border-[#d4b896]/35 bg-[#1e140c] p-6 text-center shadow-2xl">
             <p className="text-xs tracking-[0.35em] text-[#d4b896]/75">PROMOTE</p>
@@ -523,14 +985,14 @@ function GameScreen({
               <button
                 type="button"
                 className="border border-[#d4b896]/55 bg-[#d4b896]/15 px-6 py-3 tracking-[0.3em]"
-                onClick={() => setState((s) => choosePromote(s, true))}
+                onClick={() => play((s) => choosePromote(s, true))}
               >
                 成る
               </button>
               <button
                 type="button"
                 className="border border-[#f0e2c8]/35 px-6 py-3 tracking-[0.3em]"
-                onClick={() => setState((s) => choosePromote(s, false))}
+                onClick={() => play((s) => choosePromote(s, false))}
               >
                 不成
               </button>
@@ -541,7 +1003,7 @@ function GameScreen({
 
       {tableOpen && story && <JunniTable career={story.career} onClose={() => setTableOpen(false)} />}
 
-      {state.phase === "ended" && (
+      {state.phase === "ended" && !viewing && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]">
           <div className="w-full max-w-sm border border-[#d4b896]/35 bg-[#1e140c] p-6 text-center shadow-2xl">
             <p className="text-xs tracking-[0.35em] text-[#d4b896]/75">RESULT</p>
@@ -563,7 +1025,7 @@ function GameScreen({
                   <button
                     type="button"
                     className="border border-[#d4b896]/55 bg-[#d4b896]/15 px-6 py-3 tracking-[0.3em]"
-                    onClick={() => setState(startGame())}
+                    onClick={restart}
                   >
                     もう一度
                   </button>
@@ -593,19 +1055,21 @@ function GameScreen({
           {header}
           <div className="relative min-h-0 overflow-hidden rounded-md shadow-[inset_0_0_60px_rgba(0,0,0,0.6)]">
             <Shogi3DBoard
-              board={state.board}
-              hands={state.hands}
-              selected={state.selected}
-              selectedDrop={state.selectedDrop}
-              targets={state.legalTargets}
-              lastMove={state.lastMove}
-              canDrop={state.phase === "playing" && state.turn === "sente"}
+              board={shown.board}
+              hands={shown.hands}
+              selected={shown.selected}
+              selectedDrop={shown.selectedDrop}
+              targets={shown.legalTargets}
+              lastMove={shown.lastMove}
+              canDrop={shown.phase === "playing" && shown.turn === "sente"}
+              goteDrop={goteHandsOn}
               across={across}
-              onSquareClick={(coord) => setState((s) => selectSquare(s, coord))}
-              onHandClick={(piece) => setState((s) => selectDrop(s, piece))}
+              onSquareClick={(coord) => play((s) => selectSquare(s, coord, actor(s)))}
+              onHandClick={(piece) => play((s) => selectDrop(s, piece, actor(s)))}
             />
           </div>
           {modals}
+          {review}
         </div>
       </div>
     );
@@ -630,7 +1094,13 @@ function GameScreen({
             <p className="mt-0.5 max-w-full truncate text-[9px] tracking-widest text-[#d4b896]/75">{across.name}</p>
           </div>
           <div className="min-w-0 flex-1">
-            <HandTray label="あいての持ち駒" hand={state.hands.gote} />
+            <HandTray
+              label="あいての持ち駒"
+              hand={shown.hands.gote}
+              interactive={goteHandsOn}
+              selected={shown.selectedDrop}
+              onSelect={(piece) => play((s) => selectDrop(s, piece, actor(s)))}
+            />
           </div>
         </div>
 
@@ -639,11 +1109,11 @@ function GameScreen({
             <div className="shogi-board relative aspect-square w-full overflow-hidden">
               <BoardStars />
               <div className="relative z-[2] grid h-full w-full grid-cols-9 grid-rows-9">
-                {state.board.map((row, r) =>
+                {shown.board.map((row, r) =>
                   row.map((piece, c) => {
                     const selected =
-                      state.selected?.r === r && state.selected?.c === c;
-                    const legal = state.legalTargets.some(
+                      shown.selected?.r === r && shown.selected?.c === c;
+                    const legal = shown.legalTargets.some(
                       (t) => t.r === r && t.c === c,
                     );
                     return (
@@ -656,9 +1126,7 @@ function GameScreen({
                         lastFrom={isLastFrom(r, c)}
                         lastTo={isLastTo(r, c)}
                         opponentMove={Boolean(opponentMove)}
-                        onClick={() =>
-                          setState((s) => selectSquare(s, { r, c }))
-                        }
+                        onClick={() => play((s) => selectSquare(s, { r, c }, actor(s)))}
                       />
                     );
                   }),
@@ -670,13 +1138,14 @@ function GameScreen({
 
         <HandTray
           label="あなたの持ち駒"
-          hand={state.hands.sente}
-          interactive={state.phase === "playing" && state.turn === "sente"}
-          selected={state.selectedDrop}
-          onSelect={(piece) => setState((s) => selectDrop(s, piece))}
+          hand={shown.hands.sente}
+          interactive={shown.phase === "playing" && shown.turn === "sente"}
+          selected={shown.selectedDrop}
+          onSelect={(piece) => play((s) => selectDrop(s, piece, actor(s)))}
         />
 
         {modals}
+        {review}
       </div>
     </div>
   );

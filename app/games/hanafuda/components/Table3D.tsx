@@ -87,7 +87,7 @@ function CapturedPiles({ cards, width }: { cards: HanafudaCard[]; width: number 
                 />
               ))}
             </div>
-            <span className="text-[10px] tracking-widest text-[#f3d9a8]/60">
+            <span className="text-[11px] tracking-widest text-[#f3d9a8]/70">
               {KIND_LABEL[kind]} {group.length > 0 ? group.length : ""}
             </span>
           </div>
@@ -174,6 +174,7 @@ function PlayerHand({
   const n = cards.length;
   const width = 86;
   const height = Math.round((width * 10) / 7);
+  const sag = n > 1 ? ((n - 1) / 2) ** 2 * 1.5 : 0;
   return (
     <div className="relative h-full w-full">
       {cards.map((card, i) => {
@@ -186,13 +187,13 @@ function PlayerHand({
             disabled={!canPick}
             onClick={() => onPick(card.id)}
             aria-label={`${card.flower}の${card.name}`}
-            className="group absolute bottom-0 left-1/2 p-0 transition-transform duration-200 ease-out"
+            className="group absolute bottom-2 left-1/2 p-0 transition-transform duration-200 ease-out"
             style={{
               width,
               height,
               marginLeft: -width / 2,
               transformOrigin: "50% 160%",
-              transform: `translateX(${o * 62}px) translateY(${canPick ? 18 + o * o * 1.5 : 44 + o * o * 1.5}px) rotate(${o * 4.5}deg)`,
+              transform: `translateX(${o * 62}px) translateY(${o * o * 1.5 - sag}px) rotate(${o * 4.5}deg)`,
               zIndex: i,
             }}
           >
@@ -238,7 +239,7 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
 
       {/* the table, tilted away from the player */}
       <div
-        className="absolute inset-x-0 bottom-[112px] top-0 flex justify-center"
+        className="absolute inset-x-0 bottom-[158px] top-0 flex justify-center"
         style={{ perspective: "1100px", perspectiveOrigin: "50% 10%" }}
       >
         <div
@@ -264,7 +265,7 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
             </div>
 
             {/* opponent's captured cards */}
-            <CapturedPiles cards={state.captured.opponent} width={34} />
+            <CapturedPiles cards={state.captured.opponent} width={46} />
 
             {/* field */}
             <div className="flex min-h-0 items-center gap-6 px-2">
@@ -303,7 +304,7 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
             </div>
 
             {/* player's captured cards */}
-            <CapturedPiles cards={state.captured.player} width={38} />
+            <CapturedPiles cards={state.captured.player} width={56} />
           </div>
         </div>
       </div>
@@ -312,7 +313,7 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
       <div className="absolute left-3 top-3 z-10">
         <Hud state={state} who="opponent" label="あいて" />
       </div>
-      <div className="absolute bottom-3 right-3 z-30">
+      <div className="absolute bottom-[164px] right-3 z-30">
         <Hud state={state} who="player" label="あなた" />
       </div>
       <div className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-[60%] -translate-x-1/2 rounded-full border border-[#f3d9a8]/20 bg-black/50 px-4 py-1 text-center text-xs tracking-wide text-[#f3e7c8]/85 backdrop-blur-[2px]">
@@ -321,7 +322,7 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
       </div>
 
       {/* the player's hand, held up in a fan */}
-      <div className="absolute inset-x-0 bottom-0 z-20 h-[150px]">
+      <div className="absolute inset-x-0 bottom-0 z-20 h-[154px]">
         <PlayerHand cards={state.hands.player} field={state.field} canPick={canPickHand} onPick={onPickHand} />
       </div>
     </div>

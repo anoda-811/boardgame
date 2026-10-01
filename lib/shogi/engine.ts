@@ -1,8 +1,13 @@
 import { pickAmateurMove } from "./amateur";
-import { inCheck } from "./board";
+import { applyMove, inCheck } from "./board";
+import type { SenteEval } from "./kifu";
 import type { AiRank } from "./game";
 import { parseBestmove, toSfen } from "./sfen";
-import type { Board, Hand, Move, Side } from "./types";
+import { opposite, type Board, type Hand, type Move, type Side } from "./types";
+
+export type CandidateMove = { move: Move; evaluation: SenteEval };
+
+export type { SenteEval };
 
 /**
  * YaneuraOu NNUE K-P (Suisho Petite), GPL-3.0.
@@ -38,7 +43,7 @@ const RANK_SEARCH: Record<
   "9dan": { skill: 20, go: "go movetime 3000", limitMs: 10000, multipv: 1, margin: 0 },
 };
 
-type PvLine = { depth: number; multipv: number; cp: number; move: string };
+type PvLine = { depth: number; multipv: number; cp: number; mate: number | null; move: string; bound: boolean };
 
 /** Latest multipv lines. A mate score is pushed far past any material blunder. */
 export function parseInfoLine(line: string): PvLine | null {
@@ -46,12 +51,82 @@ export function parseInfoLine(line: string): PvLine | null {
   const score = line.match(/score (cp|mate) (-?\d+)/);
   if (!score) return null;
   const raw = Number(score[2]);
-  const cp = score[1] === "cp" ? raw : raw > 0 ? 100000 - raw : -100000 - raw;
+  const mate = score[1] === "mate" ? raw : null;
+  const cp = mate == null ? raw : raw > 0 ? 100000 - raw : -100000 - raw;
   const depth = Number(line.match(/\bdepth (\d+)/)?.[1] ?? 0);
   const multipv = Number(line.match(/multipv (\d+)/)?.[1] ?? 1);
   const move = line.split(" pv ")[1]?.split(/\s+/)[0];
   if (!move || move === "resign" || move === "win") return null;
-  return { depth, multipv, cp, move };
+  const bound = /\b(?:lowerbound|upperbound)\b/.test(line);
+  return { depth, multipv, cp, mate, move, bound };
+}
+
+function toSente(turn: Side, cp: number, mate: number | null): SenteEval {
+  return {
+    cp: turn === "sente" ? cp : -cp,
+    mate: mate == null ? null : turn === "sente" ? mate : -mate,
+  };
+}
+
+/** Deepest depth that finished with a real score, not an aspiration bound. */
+function settledDepth(infos: PvLine[]): number {
+  let depth = 0;
+  for (const info of infos) {
+    if (!info.bound && info.depth > depth) depth = info.depth;
+  }
+  return depth;
+}
+
+/** Root score from sente's side. A last-depth jump of more than five pawns is discarded. */
+function rootEvaluation(infos: PvLine[], turn: Side): SenteEval | null {
+  const byDepth = linesByDepth(infos);
+  const depths = [...byDepth.keys()].sort((a, b) => a - b);
+  if (depths.length === 0) return null;
+  let chosen = byDepth.get(depths[0])!;
+  for (let i = 1; i < depths.length; i += 1) {
+    const line = byDepth.get(depths[i])!;
+    if (line.mate != null) {
+      chosen = line;
+      continue;
+    }
+    if (chosen.mate == null && Math.abs(line.cp - chosen.cp) > 500) break;
+    chosen = line;
+  }
+  return toSente(turn, chosen.cp, chosen.mate);
+}
+
+function linesByDepth(infos: PvLine[]): Map<number, PvLine> {
+  const byDepth = new Map<number, PvLine>();
+  for (const info of infos) {
+    if (info.bound || info.multipv !== 1 || info.depth < 1) continue;
+    byDepth.set(info.depth, info);
+  }
+  return byDepth;
+}
+
+/**
+ * Score of the position after a candidate move, from sente.
+ * The engine reports centipawns for whoever is about to move, so a plus
+ * for the opponent is stored as a minus. A search that changes its mind
+ * about who is ahead keeps the later sign; a same-sign jump of more than
+ * five pawns is still discarded.
+ */
+function candidateEvaluation(infos: PvLine[], turn: Side): SenteEval | null {
+  if (settledDepth(infos) < 1) return null;
+  const filtered = rootEvaluation(infos, turn);
+  const byDepth = linesByDepth(infos);
+  const depths = [...byDepth.keys()].sort((a, b) => a - b);
+  const deepest = depths.length > 0 ? byDepth.get(depths[depths.length - 1]) : null;
+  if (!deepest) return filtered;
+  const settled = toSente(turn, deepest.cp, deepest.mate);
+  if (!filtered) return settled;
+  const signFlipped =
+    filtered.mate == null &&
+    settled.mate == null &&
+    filtered.cp !== 0 &&
+    settled.cp !== 0 &&
+    filtered.cp * settled.cp < 0;
+  return signFlipped ? settled : filtered;
 }
 
 /**
@@ -111,20 +186,42 @@ function loadFactory(): Promise<EngineFactory | null> {
   return factoryPromise;
 }
 
-function collectUntilBest(target: Engine, timeoutMs: number): Promise<{ best: string; infos: PvLine[] }> {
+function collectUntilBest(
+  target: Engine,
+  timeoutMs: number,
+  timeoutMode: "reject" | "settle" = "reject",
+): Promise<{ best: string; infos: PvLine[] }> {
   return new Promise((resolve, reject) => {
     const infos: PvLine[] = [];
-    const timer = window.setTimeout(() => {
+    let finished = false;
+    let grace = 0;
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(grace);
       target.removeMessageListener(onLine);
-      reject(new Error("engine timeout: bestmove"));
+    };
+    const finish = (best: string) => {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      resolve({ best, infos });
+    };
+    const timer = window.setTimeout(() => {
+      if (timeoutMode === "reject") {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        reject(new Error("engine timeout: bestmove"));
+        return;
+      }
+      target.postMessage("stop");
+      grace = window.setTimeout(() => finish(""), 1200);
     }, timeoutMs);
     const onLine = (line: string) => {
       const info = parseInfoLine(line);
       if (info) infos.push(info);
       if (!line.startsWith("bestmove")) return;
-      window.clearTimeout(timer);
-      target.removeMessageListener(onLine);
-      resolve({ best: line, infos });
+      finish(line);
     };
     target.addMessageListener(onLine);
   });
@@ -188,13 +285,13 @@ export function cancelEngineSearch() {
   engine?.postMessage("stop");
 }
 
-/** Ask YaneuraOu for a move. Null means the engine is unavailable. */
+/** Ask YaneuraOu for a move. Null means the search was dropped or the engine is unavailable. */
 export function requestEngineMove(
   board: Board,
   hands: Record<Side, Hand>,
   turn: Side,
   rank: AiRank,
-): Promise<Move | "resign" | "win" | null> {
+): Promise<{ move: Move | "resign" | "win" | null; evaluation: SenteEval | null } | null> {
   const ticket = generation;
   const profile = RANK_SEARCH[rank];
   return enqueue(async () => {
@@ -204,6 +301,7 @@ export function requestEngineMove(
     try {
       current.postMessage(`setoption name SkillLevel value ${profile.skill}`);
       current.postMessage(`setoption name MultiPV value ${profile.multipv}`);
+      current.postMessage("setoption name MinimumThinkingTime value 1000");
       const ready = waitFor(current, "readyok", 10000);
       current.postMessage("isready");
       await ready;
@@ -213,11 +311,129 @@ export function requestEngineMove(
       current.postMessage(profile.go);
       const { best, infos } = await searched;
       if (ticket !== generation) return null;
+      const evaluation = rootEvaluation(infos, turn);
       if (rank === "10kyu" && !inCheck(board, turn)) {
         const amateur = pickAmateurMove(board, hands, turn, infos);
-        if (amateur) return amateur;
+        if (amateur) return { move: amateur, evaluation };
       }
-      return parseBestmove(selectSoftMove(best, infos, profile.margin, profile.softness));
+      return { move: parseBestmove(selectSoftMove(best, infos, profile.margin, profile.softness)), evaluation };
+    } catch {
+      return null;
+    }
+  });
+}
+
+function topCandidates(infos: PvLine[], turn: Side, count: number): CandidateMove[] {
+  const depth = settledDepth(infos);
+  if (depth < 4) return [];
+  const latest = new Map<number, PvLine>();
+  for (const info of infos) {
+    if (!info.bound && info.depth === depth) latest.set(info.multipv, info);
+  }
+  const found: CandidateMove[] = [];
+  for (let pv = 1; pv <= count; pv += 1) {
+    const line = latest.get(pv);
+    if (!line) continue;
+    const parsed = parseBestmove(`bestmove ${line.move}`);
+    if (!parsed || parsed === "resign" || parsed === "win") continue;
+    found.push({ move: parsed, evaluation: toSente(turn, line.cp, line.mate) });
+  }
+  return found;
+}
+
+export type CandidateMoves = {
+  moves: CandidateMove[];
+  /** Sente-POV of the position under study. Not the score after a listed move. */
+  positionEval: SenteEval | null;
+};
+
+/** The engine's own best moves for study. Not the weakened opponent. */
+export function requestCandidateMoves(
+  board: Board,
+  hands: Record<Side, Hand>,
+  turn: Side,
+): Promise<CandidateMoves | null> {
+  const ticket = generation;
+  return enqueue(async () => {
+    if (ticket !== generation) return null;
+    const current = await getEngine();
+    if (!current || ticket !== generation) return null;
+    try {
+      current.postMessage("setoption name SkillLevel value 20");
+      current.postMessage("setoption name MultiPV value 3");
+      current.postMessage("setoption name MinimumThinkingTime value 0");
+      const ready = waitFor(current, "readyok", 10000);
+      current.postMessage("isready");
+      await ready;
+      if (ticket !== generation) return null;
+      current.postMessage(`position sfen ${toSfen(board, hands, turn)}`);
+      const searched = collectUntilBest(current, 5000);
+      current.postMessage("go depth 6");
+      const { infos } = await searched;
+      if (ticket !== generation) return null;
+      const found = topCandidates(infos, turn, 3);
+      if (found.length === 0) return null;
+      const positionEval = rootEvaluation(infos, turn);
+      // Show the sente-POV score of the position the move leaves, which is
+      // what the big eval shows after the move. The root score is from the
+      // side about to move, so a plus for the opponent would stay positive.
+      current.postMessage("setoption name MultiPV value 1");
+      const narrowed = waitFor(current, "readyok", 10000);
+      current.postMessage("isready");
+      await narrowed;
+      const scored: CandidateMove[] = [];
+      for (const candidate of found) {
+        if (ticket !== generation) return null;
+        const applied = applyMove(board, hands, turn, candidate.move);
+        if (!applied) continue;
+        const childTurn = opposite(turn);
+        try {
+          current.postMessage(`position sfen ${toSfen(applied.board, applied.hands, childTurn)}`);
+          const childSearch = collectUntilBest(current, 5000, "settle");
+          current.postMessage("go depth 6");
+          const childInfos = (await childSearch).infos;
+          if (ticket !== generation) return null;
+          const childEval = candidateEvaluation(childInfos, childTurn);
+          if (!childEval) continue;
+          scored.push({ move: candidate.move, evaluation: childEval });
+        } catch {
+          // Leave the move out rather than show the pre-move score.
+        }
+      }
+      if (scored.length === 0) return null;
+      return { moves: scored, positionEval };
+    } catch {
+      return null;
+    }
+  });
+}
+
+/** Honest, short evaluation of a position. Does not choose the opponent's move. */
+export function requestPositionEval(
+  board: Board,
+  hands: Record<Side, Hand>,
+  turn: Side,
+): Promise<SenteEval | null> {
+  const ticket = generation;
+  return enqueue(async () => {
+    if (ticket !== generation) return null;
+    const current = await getEngine();
+    if (!current || ticket !== generation) return null;
+    try {
+      current.postMessage("setoption name SkillLevel value 20");
+      current.postMessage("setoption name MultiPV value 1");
+      current.postMessage("setoption name MinimumThinkingTime value 0");
+      const ready = waitFor(current, "readyok", 10000);
+      current.postMessage("isready");
+      await ready;
+      if (ticket !== generation) return null;
+      current.postMessage(`position sfen ${toSfen(board, hands, turn)}`);
+      const searched = collectUntilBest(current, 5000);
+      current.postMessage("go depth 6");
+      const { infos } = await searched;
+      if (ticket !== generation) return null;
+      if (settledDepth(infos) < 1) return null;
+      return rootEvaluation(infos, turn);
     } catch {
       return null;
     }
