@@ -914,7 +914,7 @@ function GameScreen({
   ) : null;
 
   const header = (
-    <header className="flex flex-nowrap items-center justify-between gap-2 overflow-x-auto">
+    <header className="flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-x-auto overflow-y-hidden sm:overflow-x-hidden">
       <div className="shrink-0">
         <p className="hidden text-xs tracking-[0.35em] text-[#d4b896]/65 sm:block">SHOGI</p>
             <h1 className="flex items-baseline gap-2 font-[family-name:var(--font-display)] text-lg tracking-widest sm:gap-3 sm:text-2xl">
