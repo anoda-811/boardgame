@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { HanafudaCard } from "@/lib/hanafuda/cards";
-import { cardsForYaku, evaluateYaku, yakuSignature, type Yaku } from "@/lib/hanafuda/yaku";
+import { cardsForYaku, evaluateYaku, type Yaku } from "@/lib/hanafuda/yaku";
 import {
   chooseKoikoi,
   confirmOpponentDraw,
@@ -20,7 +20,7 @@ import {
   type GameState,
 } from "@/lib/hanafuda/game";
 import { Table3D } from "./Table3D";
-import { YakuReveal } from "./YakuReveal";
+import { YakuChoice, YakuReveal } from "./YakuReveal";
 import { playCardSound, primeCardAudio } from "./cardSound";
 
 type YakuFlash = {
@@ -129,7 +129,6 @@ function GameScreen({
   const [soundOn, setSoundOn] = useState(true);
   const [yakuQueue, setYakuQueue] = useState<YakuFlash[]>([]);
   const seenYaku = useRef<{ player: Set<string>; opponent: Set<string> } | null>(null);
-  const offeredSig = useRef("");
 
   const capturedKey = `${state.captured.player.map((card) => card.id).join(",")}|${state.captured.opponent.map((card) => card.id).join(",")}`;
   useEffect(() => {
@@ -157,42 +156,15 @@ function GameScreen({
     if (fresh.length > 0) setYakuQueue((queue) => [...queue, ...fresh]);
   }, [capturedKey, state.captured]);
 
-  // The flourish can finish during the hand play, before the deck is drawn.
-  // Koi-koi is only asked after that draw, so reopen the choice if it is still pending.
+  const choosing = state.phase === "koikoi";
+  const choiceYaku = choosing ? evaluateYaku(state.captured.player) : null;
   useEffect(() => {
-    if (state.captured.player.length === 0) offeredSig.current = "";
-    if (state.phase !== "koikoi") return;
-    const result = evaluateYaku(state.captured.player);
-    const sig = yakuSignature(result);
-    if (!sig || sig === offeredSig.current) return;
-    const previous = new Map(
-      offeredSig.current
-        .split("|")
-        .filter(Boolean)
-        .map((part) => {
-          const [id, points] = part.split(":");
-          return [id, points] as const;
-        }),
-    );
-    const focus = result.list.filter((yaku) => previous.get(yaku.id) !== String(yaku.points));
-    const list = focus.length > 0 ? focus : result.list;
-    offeredSig.current = sig;
-    setYakuQueue((queue) => {
-      if (queue.some((item) => item.who === "player")) return queue;
-      return [
-        ...queue,
-        ...list.map((yaku) => ({
-          key: `decide-${sig}-${yaku.id}`,
-          yaku,
-          cards: cardsForYaku(state.captured.player, yaku),
-          who: "player" as const,
-        })),
-      ];
-    });
-  }, [state.phase, capturedKey, state.captured.player]);
+    if (!choosing) return;
+    setYakuQueue((queue) => (queue.some((item) => item.who === "player") ? queue.filter((item) => item.who !== "player") : queue));
+  }, [choosing, yakuQueue]);
 
-  const showing = yakuQueue[0];
-  const awaitChoice = Boolean(showing && showing.who === "player" && state.phase === "koikoi" && yakuQueue.length === 1);
+  const showing = choosing ? undefined : yakuQueue[0];
+  const awaitChoice = false;
   useEffect(() => {
     if (!showing || awaitChoice) return;
     const timer = window.setTimeout(() => setYakuQueue((queue) => queue.slice(1)), 2600);
@@ -338,7 +310,7 @@ function GameScreen({
         }
         onDraw={() => setState((s) => (s.phase === "awaitDraw" ? drawFromDeck(s) : s))}
       />
-      <GameModals state={state} setState={setState} onExit={onExit} hold={yakuQueue.length > 0} />
+      <GameModals state={state} setState={setState} onExit={onExit} hold={yakuQueue.length > 0 || choosing} />
       {showing && (
         <YakuReveal
           key={showing.key}
@@ -354,6 +326,17 @@ function GameScreen({
             dismissYaku();
             setState((s) => chooseKoikoi(s, false));
           }}
+        />
+      )}
+      {choiceYaku && choiceYaku.list.length > 0 && (
+        <YakuChoice
+          entries={choiceYaku.list.map((yaku) => ({
+            yaku,
+            cards: cardsForYaku(state.captured.player, yaku),
+          }))}
+          total={choiceYaku.total}
+          onKoi={() => setState((s) => chooseKoikoi(s, true))}
+          onStop={() => setState((s) => chooseKoikoi(s, false))}
         />
       )}
     </div>

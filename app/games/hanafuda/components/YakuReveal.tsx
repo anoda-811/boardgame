@@ -119,3 +119,62 @@ export function YakuReveal({ yaku, cards, who, choice, onKoi, onStop }: Props) {
     </div>
   );
 }
+
+export function YakuChoice({
+  entries,
+  total,
+  onKoi,
+  onStop,
+}: {
+  entries: { yaku: Yaku; cards: HanafudaCard[] }[];
+  total: number;
+  onKoi: () => void;
+  onStop: () => void;
+}) {
+  return (
+    <div className="yaku-veil fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+      <div className="absolute inset-0 bg-[#070503]/90" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(214,168,72,0.22),transparent_62%)]" />
+      <div className="relative flex max-h-[min(92dvh,860px)] w-full max-w-3xl flex-col overflow-hidden">
+        <p className="text-center text-[11px] tracking-[0.55em] text-[#e6c887]/75">あなたの役</p>
+        <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+          {entries.map((entry) => (
+            <section key={entry.yaku.id} className="border border-[#e6c887]/25 bg-black/35 px-3 py-3">
+              <h2 className="flex items-baseline justify-between gap-3 font-[family-name:var(--font-display)] text-2xl tracking-[0.18em] text-[#f6e7c1]">
+                {entry.yaku.name}
+                <span className="text-sm tracking-[0.35em] text-[#e6c887]">{entry.yaku.points}文</span>
+              </h2>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {entry.cards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="aspect-[7/10] w-11 overflow-hidden rounded-[3px] shadow-[0_8px_14px_rgba(0,0,0,0.45)] ring-1 ring-[#f3d9a8]/35 sm:w-14"
+                  >
+                    <CardArt card={card} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+        <p className="mt-3 text-center text-sm tracking-[0.4em] text-[#e6c887]">合計 {total}文</p>
+        <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={onKoi}
+            className="border border-[#e6c887]/70 bg-[#e6c887]/15 px-8 py-3 font-[family-name:var(--font-display)] tracking-[0.35em] text-[#f6e7c1] hover:bg-[#e6c887]/28"
+          >
+            こいこい
+          </button>
+          <button
+            type="button"
+            onClick={onStop}
+            className="border border-[#f3e7c8]/35 px-8 py-3 font-[family-name:var(--font-display)] tracking-[0.35em] text-[#f3e7c8]/85 hover:border-[#f3e7c8]/60"
+          >
+            しょうぶ
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
