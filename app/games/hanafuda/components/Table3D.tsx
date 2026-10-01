@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { CardKind, HanafudaCard } from "@/lib/hanafuda/cards";
 import type { GameState, PlayerId } from "@/lib/hanafuda/game";
 import { evaluateYaku } from "@/lib/hanafuda/yaku";
@@ -82,9 +82,61 @@ function useNarrowScreen() {
   return narrow;
 }
 
-function CapturedPiles({ cards, width, tight }: { cards: HanafudaCard[]; width: number; tight?: boolean }) {
+type StageFit = {
+  handBand: number;
+  tableW: number;
+  deckWidth: number;
+  fieldWidth: number;
+  oppCard: number;
+  oppCaptured: number;
+  playerCaptured: number;
+  handWidth: number;
+  handStep: number;
+  bow: number;
+  turn: number;
+  perspective: number;
+  card: number;
+};
+
+/** Grow the desktop table with the window so the felt is a frame, not an empty field. */
+function desktopFit(w: number, h: number): StageFit {
+  const tableW = Math.round(Math.min(Math.max(1000, w * 0.9), 2400));
+  const provisional = Math.max(1, Math.min(tableW / 1000, h / 700));
+  const handGuess = Math.round(150 * Math.min(provisional, 1.8));
+  const tableH = Math.max(480, h - handGuess);
+  const byHeight = (tableH * 0.88) / 430;
+  const byWidth = (tableW * 0.86) / 900;
+  const card = Math.max(1, Math.min(byHeight, byWidth, 2.3));
+  return {
+    handBand: Math.round(148 * card),
+    tableW,
+    deckWidth: Math.round(62 * card),
+    fieldWidth: Math.round(78 * card),
+    oppCard: Math.round(40 * card),
+    oppCaptured: Math.round(46 * card),
+    playerCaptured: Math.round(56 * card),
+    handWidth: Math.round(86 * card),
+    handStep: Math.round(64 * card),
+    bow: 1.5 * Math.min(card, 1.6),
+    turn: 4.5,
+    perspective: Math.round(tableW * 1.15),
+    card,
+  };
+}
+
+function CapturedPiles({
+  cards,
+  width,
+  tight,
+  gap,
+}: {
+  cards: HanafudaCard[];
+  width: number;
+  tight?: boolean;
+  gap?: number;
+}) {
   return (
-    <div className={tight ? "flex items-end justify-center gap-1.5" : "flex items-end justify-center gap-5"}>
+    <div className="flex items-end justify-center" style={{ gap: tight ? 6 : (gap ?? 20) }}>
       {KIND_ORDER.map((kind) => {
         const group = cards.filter((c) => c.kind === kind);
         return (
@@ -186,16 +238,21 @@ function PlayerHand({
   field,
   canPick,
   onPick,
-  narrow,
+  width,
+  stepMax,
+  bow,
+  turn,
 }: {
   cards: HanafudaCard[];
   field: HanafudaCard[];
   canPick: boolean;
   onPick: (id: string) => void;
-  narrow?: boolean;
+  width: number;
+  stepMax: number;
+  bow: number;
+  turn: number;
 }) {
   const n = cards.length;
-  const width = narrow ? 58 : 86;
   const height = Math.round((width * 10) / 7);
   const [box, setBox] = useState(0);
   useEffect(() => {
@@ -208,8 +265,8 @@ function PlayerHand({
     return () => observer.disconnect();
   }, []);
   const room = Math.max(0, (box || 360) - width - 12);
-  const step = narrow ? Math.min(34, room / Math.max(1, n - 1)) : 62;
-  const sag = n > 1 ? ((n - 1) / 2) ** 2 * (narrow ? 0.6 : 1.5) : 0;
+  const step = Math.min(stepMax, room / Math.max(1, n - 1));
+  const sag = n > 1 ? ((n - 1) / 2) ** 2 * bow : 0;
   return (
     <div id="hana-player-hand" className="relative h-full w-full">
       {cards.map((card, i) => {
@@ -222,13 +279,14 @@ function PlayerHand({
             disabled={!canPick}
             onClick={() => onPick(card.id)}
             aria-label={`${card.flower}の${card.name}`}
-            className="group absolute bottom-2 left-1/2 p-0 transition-transform duration-200 ease-out"
+            className="group absolute left-1/2 p-0 transition-transform duration-200 ease-out"
             style={{
               width,
               height,
+              bottom: Math.round(12 + width * 0.08),
               marginLeft: -width / 2,
               transformOrigin: "50% 160%",
-              transform: `translateX(${o * step}px) translateY(${o * o * (narrow ? 0.6 : 1.5) - sag}px) rotate(${o * (narrow ? 2.4 : 4.5)}deg)`,
+              transform: `translateX(${o * step}px) translateY(${o * o * bow - sag}px) rotate(${o * turn}deg)`,
               zIndex: i,
             }}
           >
@@ -252,6 +310,17 @@ function PlayerHand({
 
 export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
   const narrow = useNarrowScreen();
+  const roomRef = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = roomRef.current;
+    if (!el) return;
+    const update = () => setRoom({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const selectingField = state.phase === "selectField" || state.phase === "selectDrawField";
   const canPickHand = state.phase === "selectHand";
   const canDraw = state.phase === "awaitDraw";
@@ -264,13 +333,15 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
     (pendingFromDeck || state.phase === "selectField" || state.phase === "opponentShowHand");
 
   const oppHand = state.hands.opponent;
-  const handBand = narrow ? 112 : 154;
-  const deckWidth = narrow ? 46 : 62;
-  const fieldWidth = narrow ? 48 : 78;
-  const oppCard = narrow ? 28 : 40;
+  const fitted = !narrow && room.w >= 200 ? desktopFit(room.w, room.h) : null;
+  const handBand = narrow ? 112 : (fitted?.handBand ?? 154);
+  const deckWidth = narrow ? 46 : (fitted?.deckWidth ?? 62);
+  const fieldWidth = narrow ? 48 : (fitted?.fieldWidth ?? 78);
+  const oppCard = narrow ? 28 : (fitted?.oppCard ?? 40);
+  const cardScale = fitted?.card ?? 1;
 
   return (
-    <div className="hana-room relative min-h-0 flex-1 overflow-clip">
+    <div ref={roomRef} className="hana-room relative min-h-0 flex-1 overflow-clip">
       {/* lamp glow */}
       <div
         aria-hidden
@@ -280,17 +351,44 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
       {/* the table, tilted away from the player */}
       <div
         className="absolute inset-x-0 top-0 flex justify-center"
-        style={{ perspective: "1100px", perspectiveOrigin: "50% 10%", bottom: handBand }}
+        style={{
+          perspective: fitted ? `${fitted.perspective}px` : "1100px",
+          perspectiveOrigin: "50% 10%",
+          bottom: handBand,
+        }}
       >
         <div
-          className={narrow ? "hana-table relative h-full w-[min(98%,1000px)] self-end p-1.5" : "hana-table relative h-[118%] w-[min(92%,1000px)] self-end p-4"}
+          className={
+            narrow
+              ? "hana-table relative h-full w-[min(98%,1000px)] self-end p-1.5"
+              : fitted
+                ? "hana-table relative h-[112%] self-end"
+                : "hana-table relative h-[118%] w-[min(92%,1000px)] self-end p-4"
+          }
           style={{
             transform: narrow ? "rotateX(12deg)" : "rotateX(34deg)",
             transformOrigin: "50% 100%",
             transformStyle: "preserve-3d",
+            ...(fitted
+              ? { width: fitted.tableW, maxWidth: "94%", padding: Math.round(16 * cardScale) }
+              : {}),
           }}
         >
-          <div className={narrow ? "hana-felt grid h-full grid-rows-[auto_auto_minmax(0,1fr)_auto] gap-1 px-1.5 py-1.5" : "hana-felt grid h-full grid-rows-[auto_auto_minmax(0,1fr)_auto] gap-2 px-4 py-3"}>
+          <div
+            className={
+              narrow
+                ? "hana-felt grid h-full grid-rows-[auto_auto_minmax(0,1fr)_auto] gap-1 px-1.5 py-1.5"
+                : "hana-felt grid h-full grid-rows-[auto_auto_minmax(0,1fr)_auto]"
+            }
+            style={
+              narrow
+                ? undefined
+                : {
+                    gap: Math.round(8 * cardScale),
+                    padding: `${Math.round(12 * cardScale)}px ${Math.round(16 * cardScale)}px`,
+                  }
+            }
+          >
             {/* opponent's hand */}
             <div className="flex justify-center">
               {oppHand.map((card, i) => (
@@ -301,7 +399,7 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
                   faceDown
                   enter="none"
                   style={{
-                    marginLeft: i === 0 ? 0 : narrow ? -12 : -16,
+                    marginLeft: i === 0 ? 0 : narrow ? -12 : Math.round(-16 * cardScale),
                     transform: `rotate(${(i - (oppHand.length - 1) / 2) * -3}deg)`,
                   }}
                 />
@@ -309,11 +407,22 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
             </div>
 
             {/* opponent's captured cards */}
-            <CapturedPiles cards={state.captured.opponent} width={narrow ? 30 : 46} tight={narrow} />
+            <CapturedPiles
+              cards={state.captured.opponent}
+              width={narrow ? 30 : (fitted?.oppCaptured ?? 46)}
+              tight={narrow}
+              gap={Math.round(20 * cardScale)}
+            />
 
             {/* field */}
-            <div className={narrow ? "flex min-h-0 items-center gap-2 px-0.5" : "flex min-h-0 items-center gap-6 px-2"}>
-              <div className={narrow ? "flex shrink-0 flex-col items-center gap-4" : "flex shrink-0 flex-col items-center gap-7"}>
+            <div
+              className="flex min-h-0 items-center px-0.5 sm:px-2"
+              style={{ gap: narrow ? 8 : Math.round(24 * cardScale) }}
+            >
+              <div
+                className="flex shrink-0 flex-col items-center"
+                style={{ gap: narrow ? 16 : Math.round(28 * cardScale) }}
+              >
                 <DeckStack count={state.deck.length} canDraw={canDraw} onDraw={onDraw} width={deckWidth} />
                 <div className="relative" style={{ width: deckWidth, height: Math.round((deckWidth * 10) / 7) }}>
                   {showPending && pending ? (
@@ -327,7 +436,10 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
                 </div>
               </div>
 
-              <div className={narrow ? "flex min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-1" : "flex min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-2.5"}>
+              <div
+                className="flex min-w-0 flex-1 flex-wrap content-center items-center justify-center"
+                style={{ gap: narrow ? 4 : Math.round(10 * cardScale) }}
+              >
                 {state.field.map((card) => {
                   const choice = selectingField && state.pendingMatches.some((m) => m.id === card.id);
                   return (
@@ -348,7 +460,12 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
             </div>
 
             {/* player's captured cards */}
-            <CapturedPiles cards={state.captured.player} width={narrow ? 36 : 56} tight={narrow} />
+            <CapturedPiles
+              cards={state.captured.player}
+              width={narrow ? 36 : (fitted?.playerCaptured ?? 56)}
+              tight={narrow}
+              gap={Math.round(20 * cardScale)}
+            />
           </div>
         </div>
       </div>
@@ -358,8 +475,8 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
         <Hud state={state} who="opponent" label="あいて" />
       </div>
       <div
-        className={narrow ? "absolute right-1 z-30 max-w-[40%] origin-bottom-right scale-90" : "absolute bottom-[164px] right-3 z-30"}
-        style={narrow ? { bottom: handBand + 4 } : undefined}
+        className={narrow ? "absolute right-1 z-30 max-w-[40%] origin-bottom-right scale-90" : "absolute right-3 z-30"}
+        style={{ bottom: handBand + (narrow ? 4 : 10) }}
       >
         <Hud state={state} who="player" label="あなた" />
       </div>
@@ -375,7 +492,10 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
           field={state.field}
           canPick={canPickHand}
           onPick={onPickHand}
-          narrow={narrow}
+          width={narrow ? 58 : (fitted?.handWidth ?? 86)}
+          stepMax={narrow ? 34 : (fitted?.handStep ?? 62)}
+          bow={narrow ? 0.6 : (fitted?.bow ?? 1.5)}
+          turn={narrow ? 2.4 : (fitted?.turn ?? 4.5)}
         />
       </div>
     </div>
