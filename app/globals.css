@@ -357,3 +357,88 @@ body {
 .animate-hana-choice {
   animation: hana-choice 1.1s ease-in-out infinite;
 }
+
+@keyframes yaku-veil-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.yaku-veil {
+  animation: yaku-veil-in 0.28s ease both;
+}
+
+@keyframes yaku-card-spin {
+  0% {
+    opacity: 0;
+    transform: translateY(36px) rotateY(88deg) rotate(calc(var(--yaku-lean) - 22deg)) scale(0.45);
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(calc(var(--yaku-drop) - 12px)) rotateY(-18deg) rotate(calc(var(--yaku-lean) + 4deg)) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(var(--yaku-drop)) rotateY(0deg) rotate(var(--yaku-lean)) scale(1);
+  }
+}
+
+.yaku-card {
+  transform-style: preserve-3d;
+  animation: yaku-card-spin 0.9s cubic-bezier(0.16, 0.84, 0.28, 1) both;
+}
+
+@keyframes yaku-rule {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.yaku-rule {
+  transform-origin: center;
+  animation: yaku-rule 0.55s 0.4s ease both;
+}
+
+@keyframes yaku-name-in {
+  0% {
+    opacity: 0;
+    filter: blur(10px);
+    letter-spacing: 0.85em;
+    transform: scale(1.45);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    letter-spacing: 0.18em;
+    transform: scale(1);
+  }
+}
+
+.yaku-name {
+  animation: yaku-name-in 0.75s 0.48s cubic-bezier(0.16, 0.8, 0.2, 1) both;
+}
+
+@keyframes yaku-seal {
+  0% {
+    opacity: 0;
+    transform: rotate(-16deg) scale(1.6);
+  }
+  70% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(1);
+  }
+}
+
+.yaku-seal {
+  animation: yaku-seal 0.45s 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}

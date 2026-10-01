@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { evaluateYaku } from "@/lib/hanafuda/yaku";
+import { useEffect, useRef, useState, useTransition } from "react";
+import type { HanafudaCard } from "@/lib/hanafuda/cards";
+import { cardsForYaku, evaluateYaku, yakuSignature, type Yaku } from "@/lib/hanafuda/yaku";
 import {
   chooseKoikoi,
   confirmOpponentDraw,
@@ -18,16 +19,15 @@ import {
   startMatch,
   type GameState,
 } from "@/lib/hanafuda/game";
-import { CardView } from "./CardView";
-import { CardBackArt } from "./CardArt";
 import { Table3D } from "./Table3D";
+import { YakuReveal } from "./YakuReveal";
 import { playCardSound, primeCardAudio } from "./cardSound";
 
-export type ViewMode = "2d" | "3d";
-
-const VIEW_LABEL: Record<ViewMode, { label: string; description: string }> = {
-  "2d": { label: "平面", description: "札を並べて見やすく" },
-  "3d": { label: "立体", description: "卓を囲む臨場感" },
+type YakuFlash = {
+  key: string;
+  yaku: Yaku;
+  cards: HanafudaCard[];
+  who: "player" | "opponent";
 };
 
 const petals = [
@@ -39,15 +39,7 @@ const petals = [
   { left: "84%", delay: "5.8s", duration: "15s", size: 8 },
 ];
 
-function TitleScreen({
-  onStart,
-  view,
-  onViewChange,
-}: {
-  onStart: () => void;
-  view: ViewMode;
-  onViewChange: (view: ViewMode) => void;
-}) {
+function TitleScreen({ onStart }: { onStart: () => void }) {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-pine-deep text-[#f3e7c8]">
       <div
@@ -85,35 +77,7 @@ function TitleScreen({
           <br />
           こいこいの対局へようこそ。
         </p>
-        <div className="animate-fade-up mt-10 w-full max-w-xs">
-          <p className="mb-2 text-[10px] tracking-[0.35em] text-[#d4c08a]/70">表示モード</p>
-          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="表示モード">
-            {(Object.keys(VIEW_LABEL) as ViewMode[]).map((key) => {
-              const active = key === view;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => onViewChange(key)}
-                  className={[
-                    "flex flex-col items-center gap-1 border px-2 py-2.5 transition",
-                    active
-                      ? "border-[#e6cf94]/80 bg-[#d4c08a]/20 shadow-[0_0_18px_rgba(212,192,138,0.25)]"
-                      : "border-[#d4c08a]/20 bg-black/20 hover:border-[#d4c08a]/45",
-                  ].join(" ")}
-                >
-                  <span className="font-[family-name:var(--font-display)] text-base tracking-[0.2em]">
-                    {VIEW_LABEL[key].label}
-                  </span>
-                  <span className="text-[10px] text-[#d4c08a]/65">{VIEW_LABEL[key].description}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div className="animate-fade-up mt-8 flex flex-col items-center gap-4">
+        <div className="animate-fade-up mt-10 flex flex-col items-center gap-4">
           <button
             type="button"
             onClick={onStart}
@@ -130,6 +94,12 @@ function TitleScreen({
           >
             札の一覧を見る
           </Link>
+          <Link
+            href="/games/hanafuda/yaku"
+            className="text-xs tracking-widest text-[#d4c08a]/75 underline-offset-4 transition hover:text-[#f3e7c8] hover:underline"
+          >
+            役の一覧を見る
+          </Link>
         </div>
       </div>
 
@@ -145,175 +115,94 @@ function TitleScreen({
   );
 }
 
-function CapturedRow({
-  label,
-  cards,
-}: {
-  label: string;
-  cards: GameState["captured"]["player"];
-}) {
-  if (cards.length === 0) return null;
-  return (
-    <div className="min-w-0 flex-1">
-      <p className="mb-0.5 text-[9px] tracking-widest text-[#d8e0d0]/45 sm:mb-1 sm:text-[10px]">{label}</p>
-      <div className="flex items-end">
-        {cards.map((card, index) => (
-          <div
-            key={card.id}
-            className="relative shrink-0"
-            style={{ marginLeft: index === 0 ? 0 : -14 }}
-          >
-            <CardView card={card} size="sm" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CapturedSummary({
-  label,
-  state,
-  who,
-}: {
-  label: string;
-  state: GameState;
-  who: "player" | "opponent";
-}) {
-  const yaku = evaluateYaku(state.captured[who]);
-  const groups = useMemo(() => {
-    const captured = state.captured[who];
-    return {
-      bright: captured.filter((c) => c.kind === "bright"),
-      animal: captured.filter((c) => c.kind === "animal"),
-      ribbon: captured.filter((c) => c.kind === "ribbon"),
-      chaff: captured.filter((c) => c.kind === "chaff"),
-    };
-  }, [state.captured, who]);
-
-  const total = state.captured[who].length;
-
-  return (
-    <div className="rounded-sm border border-[#d4c08a]/20 bg-black/20 px-2 py-1.5 text-[#f3e7c8] sm:px-3 sm:py-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="font-[family-name:var(--font-display)] text-base sm:text-lg">{label}</p>
-        <p className="text-sm tracking-widest text-[#d4c08a]">
-          {state.scores[who]}文
-          <span className="ml-2 text-[#d8e0d0]/45">取り札 {total}</span>
-        </p>
-      </div>
-      {yaku.list.length > 0 && (
-        <p className="mt-1 text-xs text-[#d4c08a]/90">
-          {yaku.list.map((y) => `${y.name}(${y.points})`).join("・")}
-          <span className="text-[#d8e0d0]/60"> / 役合計 {yaku.total}文</span>
-        </p>
-      )}
-      {total === 0 ? (
-        <p className="mt-3 text-xs text-[#d8e0d0]/40">まだ取り札はありません</p>
-      ) : (
-        <div className="mt-1.5 flex items-end gap-1 overflow-hidden pb-0.5 sm:mt-3 sm:flex-col sm:gap-2 sm:overflow-x-auto sm:pb-1">
-          <CapturedRow label="光" cards={groups.bright} />
-          <CapturedRow label="種" cards={groups.animal} />
-          <CapturedRow label="短" cards={groups.ribbon} />
-          <CapturedRow label="カス" cards={groups.chaff} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DeckPile({
-  count,
-  canDraw,
-  onDraw,
-}: {
-  count: number;
-  canDraw: boolean;
-  onDraw: () => void;
-}) {
-  if (count <= 0) {
-    return (
-      <div className="flex h-[4.35rem] w-[3.05rem] items-center justify-center rounded-[4px] border border-dashed border-[#d8e0d0]/25 text-[10px] tracking-widest text-[#d8e0d0]/35 sm:h-[5.75rem] sm:w-[4rem]">
-        空
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      disabled={!canDraw}
-      onClick={onDraw}
-      className={[
-        "relative h-[4.35rem] w-[3.05rem] rounded-[4px] p-0 transition sm:h-[5.75rem] sm:w-[4rem]",
-        canDraw
-          ? "animate-deck-pulse cursor-pointer hover:-translate-y-1"
-          : "cursor-default opacity-90",
-      ].join(" ")}
-      aria-label={canDraw ? "山札をめくる" : `山札 残り${count}枚`}
-    >
-      <div className="absolute inset-0 translate-x-[3px] translate-y-[3px] overflow-hidden rounded-[4px] opacity-50">
-        <CardBackArt />
-      </div>
-      <div className="absolute inset-0 overflow-hidden rounded-[4px] shadow-[0_6px_14px_rgba(0,0,0,0.35)]">
-        <CardBackArt />
-      </div>
-      <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] tracking-widest text-[#d4c08a]/80">
-        {canDraw ? "タップでめくる" : `山札 ${count}`}
-      </span>
-    </button>
-  );
-}
-
-function StageCard({
-  state,
-}: {
-  state: GameState;
-}) {
-  const showing =
-    state.pendingCard &&
-    (state.phase === "revealDraw" ||
-      state.phase === "selectDrawField" ||
-      state.phase === "selectField" ||
-      state.phase === "opponentShowHand" ||
-      state.phase === "opponentRevealDraw");
-
-  if (!showing || !state.pendingCard) {
-    return (
-      <div className="flex h-[4.35rem] w-[3.05rem] items-center justify-center rounded-[4px] border border-dashed border-[#d8e0d0]/15 text-[10px] tracking-widest text-[#d8e0d0]/30 sm:h-[5.75rem] sm:w-[4rem]">
-        めくり
-      </div>
-    );
-  }
-
-  return (
-    <div className="animate-card-reveal">
-      <CardView card={state.pendingCard} size="md" selected />
-    </div>
-  );
-}
 
 function GameScreen({
   state,
   setState,
-  view,
-  onViewChange,
   onExit,
 }: {
   state: GameState;
   setState: React.Dispatch<React.SetStateAction<GameState>>;
-  view: ViewMode;
-  onViewChange: (view: ViewMode) => void;
   onExit: () => void;
 }) {
   const [, startTransition] = useTransition();
   const [soundOn, setSoundOn] = useState(true);
+  const [yakuQueue, setYakuQueue] = useState<YakuFlash[]>([]);
+  const seenYaku = useRef<{ player: Set<string>; opponent: Set<string> } | null>(null);
+  const offeredSig = useRef("");
 
-  const soundRef = useRef({ on: soundOn, view, field: 0, captured: 0, pending: "" });
+  const capturedKey = `${state.captured.player.map((card) => card.id).join(",")}|${state.captured.opponent.map((card) => card.id).join(",")}`;
+  useEffect(() => {
+    const sides = ["player", "opponent"] as const;
+    const current = {
+      player: new Set(evaluateYaku(state.captured.player).list.map((yaku) => yaku.id)),
+      opponent: new Set(evaluateYaku(state.captured.opponent).list.map((yaku) => yaku.id)),
+    };
+    const prev = seenYaku.current;
+    seenYaku.current = current;
+    if (!prev) return;
+    const fresh: YakuFlash[] = [];
+    for (const who of sides) {
+      const result = evaluateYaku(state.captured[who]);
+      for (const yaku of result.list) {
+        if (prev[who].has(yaku.id)) continue;
+        fresh.push({
+          key: `${who}-${yaku.id}-${capturedKey.length}`,
+          yaku,
+          cards: cardsForYaku(state.captured[who], yaku),
+          who,
+        });
+      }
+    }
+    if (fresh.length > 0) setYakuQueue((queue) => [...queue, ...fresh]);
+  }, [capturedKey, state.captured]);
+
+  // The flourish can finish during the hand play, before the deck is drawn.
+  // Koi-koi is only asked after that draw, so reopen the choice if it is still pending.
+  useEffect(() => {
+    if (state.captured.player.length === 0) offeredSig.current = "";
+    if (state.phase !== "koikoi") return;
+    const result = evaluateYaku(state.captured.player);
+    const sig = yakuSignature(result);
+    if (!sig || sig === offeredSig.current) return;
+    const previous = new Map(
+      offeredSig.current
+        .split("|")
+        .filter(Boolean)
+        .map((part) => {
+          const [id, points] = part.split(":");
+          return [id, points] as const;
+        }),
+    );
+    const focus = result.list.filter((yaku) => previous.get(yaku.id) !== String(yaku.points));
+    const list = focus.length > 0 ? focus : result.list;
+    offeredSig.current = sig;
+    setYakuQueue((queue) => {
+      if (queue.some((item) => item.who === "player")) return queue;
+      return [
+        ...queue,
+        ...list.map((yaku) => ({
+          key: `decide-${sig}-${yaku.id}`,
+          yaku,
+          cards: cardsForYaku(state.captured.player, yaku),
+          who: "player" as const,
+        })),
+      ];
+    });
+  }, [state.phase, capturedKey, state.captured.player]);
+
+  const showing = yakuQueue[0];
+  const awaitChoice = Boolean(showing && showing.who === "player" && state.phase === "koikoi" && yakuQueue.length === 1);
+  useEffect(() => {
+    if (!showing || awaitChoice) return;
+    const timer = window.setTimeout(() => setYakuQueue((queue) => queue.slice(1)), 2600);
+    return () => window.clearTimeout(timer);
+  }, [showing, awaitChoice]);
+
+  const soundRef = useRef({ on: soundOn, field: 0, captured: 0, pending: "" });
   useEffect(() => {
     soundRef.current.on = soundOn;
-    soundRef.current.view = view;
-  }, [soundOn, view]);
+  }, [soundOn]);
 
   const fieldCount = state.field.length;
   const capturedCount = state.captured.player.length + state.captured.opponent.length;
@@ -329,15 +218,10 @@ function GameScreen({
     prev.pending = pendingId;
     if (!prev.on || newRound) return;
 
-    const landing = prev.view === "3d" ? 240 : 0;
-    if (capturedMore) playCardSound("slap", landing);
-    else if (placed) playCardSound("place", landing);
+    if (capturedMore) playCardSound("slap", 240);
+    else if (placed) playCardSound("place", 240);
     else if (revealed) playCardSound("flip");
   }, [fieldCount, capturedCount, pendingId]);
-  const selectingField =
-    state.phase === "selectField" || state.phase === "selectDrawField";
-  const canPickHand = state.phase === "selectHand";
-  const canDraw = state.phase === "awaitDraw";
 
   // Opponent paced turns
   useEffect(() => {
@@ -403,28 +287,6 @@ function GameScreen({
         </h1>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-1.5 text-sm text-[#d8e0d0]/70 sm:gap-3">
-        {view === "2d" && state.koikoiCount > 0 && (
-          <span className="text-[#d4c08a]">こいこい×{state.koikoiCount}</span>
-        )}
-        <div className="flex border border-[#d8e0d0]/25" role="radiogroup" aria-label="表示モード">
-          {(Object.keys(VIEW_LABEL) as ViewMode[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="radio"
-              aria-checked={view === key}
-              onClick={() => onViewChange(key)}
-              className={[
-                "px-2 py-1 text-[11px] tracking-widest transition sm:px-3 sm:text-xs",
-                view === key
-                  ? "bg-[#d4c08a]/25 text-[#f3e7c8]"
-                  : "text-[#d8e0d0]/55 hover:text-[#f3e7c8]",
-              ].join(" ")}
-            >
-              {VIEW_LABEL[key].label}
-            </button>
-          ))}
-        </div>
         <button
           type="button"
           aria-pressed={soundOn}
@@ -455,131 +317,45 @@ function GameScreen({
     </header>
   );
 
-  const modals = <GameModals state={state} setState={setState} onExit={onExit} />;
+  const dismissYaku = () => setYakuQueue((queue) => queue.slice(1));
   const prime = () => {
     if (soundOn) primeCardAudio();
   };
 
-  if (view === "3d") {
-    return (
-      <div
-        className="relative flex h-dvh flex-col overflow-clip bg-[#0b0705] text-[#f3e7c8] sm:min-h-[560px]"
-        onPointerDown={prime}
-      >
-        <div className="relative z-30 border-b border-[#f3d9a8]/10 bg-black/40 px-4 py-2 sm:px-6">{header}</div>
-        <Table3D
-          state={state}
-          onPickHand={(id) => setState((s) => (s.phase === "selectHand" ? selectHandCard(s, id) : s))}
-          onPickField={(id) =>
-            setState((s) =>
-              s.phase === "selectField" || s.phase === "selectDrawField" ? selectFieldCard(s, id) : s,
-            )
-          }
-          onDraw={() => setState((s) => (s.phase === "awaitDraw" ? drawFromDeck(s) : s))}
-        />
-        {modals}
-      </div>
-    );
-  }
-
   return (
-    <div className="relative min-h-screen overflow-hidden bg-pine-deep text-[#f3e7c8]" onPointerDown={prime}>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#2a4a34_0%,_#163024_55%,_#0d1c14_100%)]"
+    <div
+      className="relative flex h-dvh flex-col overflow-clip bg-[#0b0705] text-[#f3e7c8] sm:min-h-[560px]"
+      onPointerDown={prime}
+    >
+      <div className="relative z-30 border-b border-[#f3d9a8]/10 bg-black/40 px-4 py-2 sm:px-6">{header}</div>
+      <Table3D
+        state={state}
+        onPickHand={(id) => setState((s) => (s.phase === "selectHand" ? selectHandCard(s, id) : s))}
+        onPickField={(id) =>
+          setState((s) =>
+            s.phase === "selectField" || s.phase === "selectDrawField" ? selectFieldCard(s, id) : s,
+          )
+        }
+        onDraw={() => setState((s) => (s.phase === "awaitDraw" ? drawFromDeck(s) : s))}
       />
-
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-2 px-2 py-2 sm:gap-4 sm:px-6 sm:py-6">
-        {header}
-
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-          <CapturedSummary label="あいて" state={state} who="opponent" />
-          <CapturedSummary label="あなた" state={state} who="player" />
-        </div>
-
-        <section className="rounded-sm border border-[#d4c08a]/15 bg-black/15 p-2 sm:p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm tracking-[0.25em] text-[#d8e0d0]/65">場札</h2>
-            <p className="text-xs text-[#d8e0d0]/55">{state.message}</p>
-          </div>
-
-          <div className="mb-3 flex items-end justify-center gap-4 sm:mb-4 sm:gap-10">
-            <div className="flex flex-col items-center gap-4 sm:gap-6">
-              <p className="text-[10px] tracking-widest text-[#d8e0d0]/45">山札</p>
-              <DeckPile
-                count={state.deck.length}
-                canDraw={canDraw}
-                onDraw={() => setState((s) => drawFromDeck(s))}
-              />
-            </div>
-            <div className="flex flex-col items-center gap-4 sm:gap-6">
-              <p className="text-[10px] tracking-widest text-[#d8e0d0]/45">
-                {state.phase === "selectField" || state.phase === "opponentShowHand"
-                  ? "出した札"
-                  : "めくった札"}
-              </p>
-              <StageCard state={state} />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-3">
-            {state.field.map((card) => {
-              const highlight =
-                selectingField &&
-                state.pendingMatches.some((m) => m.id === card.id);
-              return (
-                <CardView
-                  key={card.id}
-                  card={card}
-                  size="md"
-                  selected={highlight}
-                  dimmed={selectingField && !highlight}
-                  disabled={!highlight}
-                  onClick={
-                    highlight
-                      ? () => setState(selectFieldCard(state, card.id))
-                      : undefined
-                  }
-                />
-              );
-            })}
-            {state.field.length === 0 && (
-              <p className="py-6 text-sm text-[#d8e0d0]/40">場札はありません</p>
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-sm border border-[#d4c08a]/15 bg-black/20 p-2 sm:p-4">
-          <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3">
-            <h2 className="shrink-0 text-sm tracking-[0.25em] text-[#d8e0d0]/65">手札</h2>
-            <div className="flex max-w-[58%] justify-end max-sm:-space-x-2 sm:max-w-none sm:gap-1">
-              {state.hands.opponent.map((card) => (
-                <CardView key={card.id} card={card} faceDown size="sm" />
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-3">
-            {state.hands.player.map((card) => (
-              <CardView
-                key={card.id}
-                card={card}
-                size="lg"
-                disabled={!canPickHand}
-                onClick={
-                  canPickHand
-                    ? () => setState(selectHandCard(state, card.id))
-                    : undefined
-                }
-              />
-            ))}
-            {state.hands.player.length === 0 && (
-              <p className="py-4 text-sm text-[#d8e0d0]/40">手札なし</p>
-            )}
-          </div>
-        </section>
-
-        {modals}
-      </div>
+      <GameModals state={state} setState={setState} onExit={onExit} hold={yakuQueue.length > 0} />
+      {showing && (
+        <YakuReveal
+          key={showing.key}
+          yaku={showing.yaku}
+          cards={showing.cards}
+          who={showing.who}
+          choice={awaitChoice}
+          onKoi={() => {
+            dismissYaku();
+            setState((s) => chooseKoikoi(s, true));
+          }}
+          onStop={() => {
+            dismissYaku();
+            setState((s) => chooseKoikoi(s, false));
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -588,43 +364,16 @@ function GameModals({
   state,
   setState,
   onExit,
+  hold,
 }: {
   state: GameState;
   setState: React.Dispatch<React.SetStateAction<GameState>>;
   onExit: () => void;
+  hold: boolean;
 }) {
+  if (hold) return null;
   return (
     <>
-        {state.phase === "koikoi" && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 p-4">
-            <div className="w-full max-w-md border border-[#d4c08a]/35 bg-[#163024] p-6 text-center shadow-2xl">
-              <p className="text-xs tracking-[0.35em] text-[#d4c08a]/80">YAKU</p>
-              <h3 className="mt-2 font-[family-name:var(--font-display)] text-3xl">
-                役が揃いました
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-[#d8e0d0]/75">
-                {state.message}
-              </p>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <button
-                  type="button"
-                  className="border border-[#d4c08a]/60 bg-[#d4c08a]/15 px-6 py-3 tracking-[0.3em]"
-                  onClick={() => setState(chooseKoikoi(state, true))}
-                >
-                  こいこい
-                </button>
-                <button
-                  type="button"
-                  className="border border-[#f3e7c8]/40 px-6 py-3 tracking-[0.3em]"
-                  onClick={() => setState(chooseKoikoi(state, false))}
-                >
-                  しょうぶ
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {(state.phase === "roundOver" || state.phase === "matchOver") &&
           state.roundResult && (
             <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 p-4">
@@ -690,13 +439,10 @@ function GameModals({
 
 export function HanafudaApp() {
   const [state, setState] = useState<GameState>(() => createInitialState());
-  const [view, setView] = useState<ViewMode>("2d");
 
   if (state.phase === "title") {
     return (
       <TitleScreen
-        view={view}
-        onViewChange={setView}
         onStart={() => {
           primeCardAudio();
           setState(startMatch());
@@ -709,8 +455,6 @@ export function HanafudaApp() {
     <GameScreen
       state={state}
       setState={setState}
-      view={view}
-      onViewChange={setView}
       onExit={() => setState(createInitialState())}
     />
   );
