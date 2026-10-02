@@ -57,7 +57,7 @@ export default function HanafudaYakuPage() {
         </div>
 
         <p className="mt-6 text-center text-xs tracking-widest text-[#d8e0d0]/50">
-          7文以上、またはこいこいすると点が倍になります
+          7文以上で点が倍になります。こいこいの倍は、対局前にあり・なしを選べます
         </p>
       </div>
     </div>

@@ -221,7 +221,11 @@ function Hud({ state, who, label }: { state: GameState; who: PlayerId; label: st
     <div className="pointer-events-none rounded-sm border border-[#f3d9a8]/15 bg-black/45 px-3 py-1.5 text-[#f3e7c8] shadow-lg backdrop-blur-[2px]">
       <p className="flex items-baseline gap-2 text-sm">
         <span className="font-[family-name:var(--font-display)]">{label}</span>
-        <span className="tracking-widest text-[#e6c887]">{state.scores[who]}文</span>
+        <span className="tracking-widest text-[#e6c887]">
+          {state.rules.format === "target"
+            ? `${state.scores[who]}/${state.rules.targetScore}文`
+            : `${state.scores[who]}文`}
+        </span>
         <span className="text-[10px] text-[#f3e7c8]/45">取り札 {state.captured[who].length}</span>
       </p>
       {yaku.list.length > 0 && (
@@ -481,6 +485,9 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
         <Hud state={state} who="player" label="あなた" />
       </div>
       <div className={narrow ? "pointer-events-none absolute left-1/2 top-1 z-10 max-w-[34%] -translate-x-1/2 rounded-full border border-[#f3d9a8]/20 bg-black/50 px-2 py-0.5 text-center text-[10px] tracking-wide text-[#f3e7c8]/85 backdrop-blur-[2px]" : "pointer-events-none absolute left-1/2 top-3 z-10 max-w-[60%] -translate-x-1/2 rounded-full border border-[#f3d9a8]/20 bg-black/50 px-4 py-1 text-center text-xs tracking-wide text-[#f3e7c8]/85 backdrop-blur-[2px]"}>
+        {state.rules.format === "twelve" && (
+          <span className="mr-2 text-[#e6c887]">{state.dealMonth}/12</span>
+        )}
         {state.message}
         {state.koikoiCount > 0 && <span className="ml-2 text-[#e6c887]">こいこい×{state.koikoiCount}</span>}
       </div>

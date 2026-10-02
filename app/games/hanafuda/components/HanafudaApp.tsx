@@ -10,6 +10,7 @@ import {
   confirmOpponentHand,
   confirmRevealedDraw,
   createInitialState,
+  DEFAULT_RULES,
   drawFromDeck,
   nextRound,
   revealOpponentDraw,
@@ -17,7 +18,9 @@ import {
   selectFieldCard,
   selectHandCard,
   startMatch,
+  TARGET_SCORES,
   type GameState,
+  type HanafudaRules,
 } from "@/lib/hanafuda/game";
 import { Table3D } from "./Table3D";
 import { YakuChoice, YakuReveal } from "./YakuReveal";
@@ -39,9 +42,43 @@ const petals = [
   { left: "84%", delay: "5.8s", duration: "15s", size: 8 },
 ];
 
-function TitleScreen({ onStart }: { onStart: () => void }) {
+function RuleChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-pine-deep text-[#f3e7c8]">
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={[
+        "border px-2.5 py-1 text-[11px] tracking-widest transition sm:text-xs",
+        active
+          ? "border-[#d4c08a]/70 bg-[#d4c08a]/20 text-[#f3e7c8]"
+          : "border-[#d8e0d0]/20 text-[#d8e0d0]/55 hover:border-[#d4c08a]/40 hover:text-[#f3e7c8]",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TitleScreen({
+  rules,
+  onChange,
+  onStart,
+}: {
+  rules: HanafudaRules;
+  onChange: (rules: HanafudaRules) => void;
+  onStart: () => void;
+}) {
+  return (
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-pine-deep text-[#f3e7c8]">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#2a4a34_0%,_#163024_55%,_#0d1c14_100%)]"
@@ -65,19 +102,59 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
         />
       ))}
 
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-        <p className="animate-fade-up mb-6 text-xs tracking-[0.45em] text-[#d4c08a]/80">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-4 text-center">
+        <p className="animate-fade-up mb-3 text-xs tracking-[0.45em] text-[#d4c08a]/80">
           HANAFUDA
         </p>
-        <h1 className="animate-fade-up animate-title-glow font-[family-name:var(--font-display)] text-7xl tracking-[0.2em] text-[#f3e7c8] sm:text-8xl">
+        <h1 className="animate-fade-up animate-title-glow font-[family-name:var(--font-display)] text-6xl tracking-[0.2em] text-[#f3e7c8] sm:text-7xl">
           花札
         </h1>
-        <p className="animate-fade-up mt-5 max-w-sm text-sm leading-relaxed tracking-wide text-[#d8e0d0]/75 sm:text-base">
+        <p className="animate-fade-up mt-3 max-w-sm text-sm leading-relaxed tracking-wide text-[#d8e0d0]/75 sm:text-base">
           十二の月と、四十八枚の花。
           <br />
           こいこいの対局へようこそ。
         </p>
-        <div className="animate-fade-up mt-10 flex flex-col items-center gap-4">
+        <div className="animate-fade-up mt-5 flex w-full max-w-md flex-col items-center gap-3 text-left">
+          <div className="flex flex-col items-center gap-1.5">
+            <p className="text-[11px] tracking-widest text-[#d8e0d0]/55">勝負</p>
+            <div className="flex gap-1.5">
+              <RuleChip active={rules.format === "target"} onClick={() => onChange({ ...rules, format: "target" })}>
+                先取
+              </RuleChip>
+              <RuleChip active={rules.format === "twelve"} onClick={() => onChange({ ...rules, format: "twelve" })}>
+                12回勝負
+              </RuleChip>
+            </div>
+          </div>
+          {rules.format === "target" && (
+            <div className="flex flex-col items-center gap-1.5">
+              <p className="text-[11px] tracking-widest text-[#d8e0d0]/55">先取</p>
+              <div className="flex justify-center gap-1.5">
+                {TARGET_SCORES.map((score) => (
+                  <RuleChip
+                    key={score}
+                    active={rules.targetScore === score}
+                    onClick={() => onChange({ ...rules, targetScore: score })}
+                  >
+                    {score}文
+                  </RuleChip>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex flex-col items-center gap-1.5">
+            <p className="text-[11px] tracking-widest text-[#d8e0d0]/55">こいこい</p>
+            <div className="flex gap-1.5">
+              <RuleChip active={rules.koikoiDoubles} onClick={() => onChange({ ...rules, koikoiDoubles: true })}>
+                倍になる
+              </RuleChip>
+              <RuleChip active={!rules.koikoiDoubles} onClick={() => onChange({ ...rules, koikoiDoubles: false })}>
+                倍にならない
+              </RuleChip>
+            </div>
+          </div>
+        </div>
+        <div className="animate-fade-up mt-5 flex flex-col items-center gap-3">
           <button
             type="button"
             onClick={onStart}
@@ -86,7 +163,8 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
             はじめる
           </button>
           <p className="text-xs tracking-widest text-[#d8e0d0]/45">
-            CPU対戦・12文先取
+            CPU対戦・{rules.format === "twelve" ? "12回勝負" : `${rules.targetScore}文先取`}・こいこい
+            {rules.koikoiDoubles ? "倍" : "等倍"}
           </p>
           <Link
             href="/games/hanafuda/cards"
@@ -103,7 +181,7 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
         </div>
       </div>
 
-      <footer className="relative z-10 pb-8 text-center">
+      <footer className="relative z-10 shrink-0 pb-5 text-center">
         <Link
           href="/"
           className="text-sm tracking-widest text-[#d8e0d0]/55 transition hover:text-[#f3e7c8]"
@@ -340,6 +418,19 @@ function GameScreen({
   );
 }
 
+function outcomeLabel(state: GameState) {
+  const winner =
+    state.phase === "matchOver"
+      ? state.scores.player === state.scores.opponent
+        ? "draw"
+        : state.scores.player > state.scores.opponent
+          ? "player"
+          : "opponent"
+      : (state.roundResult?.winner ?? "draw");
+  if (winner === "draw") return "引き分け";
+  return winner === "player" ? "あなたの勝ち" : "相手の勝ち";
+}
+
 function GameModals({
   state,
   setState,
@@ -359,15 +450,13 @@ function GameModals({
             <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 p-4">
               <div className="w-full max-w-md border border-[#d4c08a]/35 bg-[#163024] p-6 text-center shadow-2xl">
                 <p className="text-xs tracking-[0.35em] text-[#d4c08a]/80">
-                  {state.phase === "matchOver" ? "MATCH" : "ROUND"}
+                  {state.phase === "matchOver"
+                    ? state.rules.format === "twelve"
+                      ? "12回勝負"
+                      : `${state.rules.targetScore}文先取`
+                    : `第${state.dealMonth}回`}
                 </p>
-                <h3 className="mt-2 font-[family-name:var(--font-display)] text-3xl">
-                  {state.roundResult.winner === "draw"
-                    ? "引き分け"
-                    : state.roundResult.winner === "player"
-                      ? "あなたの勝ち"
-                      : "相手の勝ち"}
-                </h3>
+                <h3 className="mt-2 font-[family-name:var(--font-display)] text-3xl">{outcomeLabel(state)}</h3>
                 <p className="mt-3 text-sm text-[#d8e0d0]/75">
                   {state.roundResult.reason}
                   {state.roundResult.points > 0
@@ -382,7 +471,11 @@ function GameModals({
                   </p>
                 )}
                 <p className="mt-4 text-sm tracking-widest text-[#d8e0d0]/65">
-                  合計 {state.scores.player} — {state.scores.opponent}
+                  合計 {state.scores.player} — {state.scores.opponent}（
+                  {state.rules.format === "twelve"
+                    ? `${state.dealMonth}/12回`
+                    : `${state.rules.targetScore}文先取`}
+                  ）
                 </p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                   {state.phase === "roundOver" ? (
@@ -397,7 +490,7 @@ function GameModals({
                     <button
                       type="button"
                       className="border border-[#d4c08a]/60 bg-[#d4c08a]/15 px-6 py-3 tracking-[0.3em]"
-                      onClick={() => setState(startMatch())}
+                      onClick={() => setState(startMatch(state.rules))}
                     >
                       もう一度
                     </button>
@@ -418,14 +511,17 @@ function GameModals({
 }
 
 export function HanafudaApp() {
+  const [rules, setRules] = useState<HanafudaRules>(DEFAULT_RULES);
   const [state, setState] = useState<GameState>(() => createInitialState());
 
   if (state.phase === "title") {
     return (
       <TitleScreen
+        rules={rules}
+        onChange={setRules}
         onStart={() => {
           primeCardAudio();
-          setState(startMatch());
+          setState(startMatch(rules));
         }}
       />
     );

@@ -91,6 +91,7 @@ body {
 
 .petal {
   position: absolute;
+  top: 0;
   width: 10px;
   height: 14px;
   border-radius: 50% 0 50% 0;

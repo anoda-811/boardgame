@@ -24,6 +24,22 @@ export type RoundResult = {
   reason: string;
 };
 
+export const TARGET_SCORES = [12, 24, 36] as const;
+
+export type MatchFormat = "target" | "twelve";
+
+export type HanafudaRules = {
+  format: MatchFormat;
+  targetScore: (typeof TARGET_SCORES)[number];
+  koikoiDoubles: boolean;
+};
+
+export const DEFAULT_RULES: HanafudaRules = {
+  format: "target",
+  targetScore: 12,
+  koikoiDoubles: true,
+};
+
 export type GameState = {
   phase: GamePhase;
   deck: HanafudaCard[];
@@ -39,6 +55,7 @@ export type GameState = {
   message: string;
   roundResult: RoundResult | null;
   dealMonth: number;
+  rules: HanafudaRules;
 };
 
 function other(id: PlayerId): PlayerId {
@@ -100,6 +117,7 @@ export function createInitialState(): GameState {
     message: "",
     roundResult: null,
     dealMonth: 1,
+    rules: DEFAULT_RULES,
   };
 }
 
@@ -186,10 +204,14 @@ export function startRound(state: GameState, random = Math.random): GameState {
   };
 }
 
-export function startMatch(random = Math.random): GameState {
+export function startMatch(
+  rules: HanafudaRules = DEFAULT_RULES,
+  random = Math.random,
+): GameState {
   return startRound(
     {
       ...createInitialState(),
+      rules,
       phase: "selectHand",
       scores: { player: 0, opponent: 0 },
       dealMonth: 1,
@@ -277,7 +299,7 @@ function settleEmptyRound(state: GameState): GameState {
   const opponentYaku = evaluateYaku(state.captured.opponent);
 
   if (playerYaku.total === opponentYaku.total) {
-    return {
+    return closeMatch({
       ...state,
       phase: "roundOver",
       roundResult: {
@@ -287,7 +309,7 @@ function settleEmptyRound(state: GameState): GameState {
         reason: "流局（引き分け）",
       },
       message: "流局です",
-    };
+    });
   }
 
   const winner: PlayerId =
@@ -303,7 +325,7 @@ function finishRound(
   reason: string,
 ): GameState {
   let points = yaku.total;
-  if (state.koikoiCount > 0) {
+  if (state.rules.koikoiDoubles && state.koikoiCount > 0) {
     points *= 2;
   }
   if (yaku.total >= 7) {
@@ -315,17 +337,24 @@ function finishRound(
     [winner]: state.scores[winner] + points,
   };
 
-  const matchOver = scores.player >= 12 || scores.opponent >= 12;
-
-  return {
+  return closeMatch({
     ...state,
-    phase: matchOver ? "matchOver" : "roundOver",
+    phase: "roundOver",
     scores,
     roundResult: { winner, points, yaku, reason },
     message: `${winner === "player" ? "あなたの勝ち" : "相手の勝ち"} +${points}文`,
     pendingCard: null,
     pendingMatches: [],
-  };
+  });
+}
+
+function closeMatch(state: GameState): GameState {
+  const finished =
+    state.rules.format === "twelve"
+      ? state.dealMonth >= 12
+      : state.scores.player >= state.rules.targetScore ||
+        state.scores.opponent >= state.rules.targetScore;
+  return { ...state, phase: finished ? "matchOver" : "roundOver" };
 }
 
 function resolvePlay(
