@@ -485,9 +485,8 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
         <Hud state={state} who="player" label="あなた" />
       </div>
       <div className={narrow ? "pointer-events-none absolute left-1/2 top-1 z-10 max-w-[34%] -translate-x-1/2 rounded-full border border-[#f3d9a8]/20 bg-black/50 px-2 py-0.5 text-center text-[10px] tracking-wide text-[#f3e7c8]/85 backdrop-blur-[2px]" : "pointer-events-none absolute left-1/2 top-3 z-10 max-w-[60%] -translate-x-1/2 rounded-full border border-[#f3d9a8]/20 bg-black/50 px-4 py-1 text-center text-xs tracking-wide text-[#f3e7c8]/85 backdrop-blur-[2px]"}>
-        {state.rules.format === "twelve" && (
-          <span className="mr-2 text-[#e6c887]">{state.dealMonth}/12</span>
-        )}
+        {state.rules.format === "twelve" && <span className="mr-2 text-[#e6c887]">{state.dealMonth}/12</span>}
+        {state.rules.format === "three" && <span className="mr-2 text-[#e6c887]">{state.dealMonth}/3</span>}
         {state.message}
         {(state.koikoiCount.player > 0 || state.koikoiCount.opponent > 0) && (
           <span className="ml-2 text-[#e6c887]">

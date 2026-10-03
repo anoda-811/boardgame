@@ -26,7 +26,7 @@ export type RoundResult = {
 
 export const TARGET_SCORES = [12, 24, 36] as const;
 
-export type MatchFormat = "target" | "twelve";
+export type MatchFormat = "target" | "twelve" | "three" | "bout";
 
 export type HanafudaRules = {
   format: MatchFormat;
@@ -350,10 +350,14 @@ function finishRound(
 
 function closeMatch(state: GameState): GameState {
   const finished =
-    state.rules.format === "twelve"
-      ? state.dealMonth >= 12
-      : state.scores.player >= state.rules.targetScore ||
-        state.scores.opponent >= state.rules.targetScore;
+    state.rules.format === "bout"
+      ? true
+      : state.rules.format === "twelve"
+        ? state.dealMonth >= 12
+        : state.rules.format === "three"
+          ? state.dealMonth >= 3
+          : state.scores.player >= state.rules.targetScore ||
+            state.scores.opponent >= state.rules.targetScore;
   return { ...state, phase: finished ? "matchOver" : "roundOver" };
 }
 

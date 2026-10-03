@@ -443,3 +443,25 @@ body {
 .yaku-seal {
   animation: yaku-seal 0.45s 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+
+@keyframes town-title-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes town-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
