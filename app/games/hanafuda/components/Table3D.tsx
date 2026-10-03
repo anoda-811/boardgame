@@ -489,7 +489,13 @@ export function Table3D({ state, onPickHand, onPickField, onDraw }: Props) {
           <span className="mr-2 text-[#e6c887]">{state.dealMonth}/12</span>
         )}
         {state.message}
-        {state.koikoiCount > 0 && <span className="ml-2 text-[#e6c887]">こいこい×{state.koikoiCount}</span>}
+        {(state.koikoiCount.player > 0 || state.koikoiCount.opponent > 0) && (
+          <span className="ml-2 text-[#e6c887]">
+            {state.koikoiCount.player > 0 && `あなた×${state.koikoiCount.player}`}
+            {state.koikoiCount.player > 0 && state.koikoiCount.opponent > 0 && " "}
+            {state.koikoiCount.opponent > 0 && `あいて×${state.koikoiCount.opponent}`}
+          </span>
+        )}
       </div>
 
       {/* the player's hand, held up in a fan */}

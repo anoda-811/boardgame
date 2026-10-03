@@ -51,7 +51,7 @@ export type GameState = {
   pendingCard: HanafudaCard | null;
   pendingMatches: HanafudaCard[];
   lastYakuSig: Record<PlayerId, string>;
-  koikoiCount: number;
+  koikoiCount: Record<PlayerId, number>;
   message: string;
   roundResult: RoundResult | null;
   dealMonth: number;
@@ -113,7 +113,7 @@ export function createInitialState(): GameState {
     pendingCard: null,
     pendingMatches: [],
     lastYakuSig: { player: "", opponent: "" },
-    koikoiCount: 0,
+    koikoiCount: { player: 0, opponent: 0 },
     message: "",
     roundResult: null,
     dealMonth: 1,
@@ -194,7 +194,7 @@ export function startRound(state: GameState, random = Math.random): GameState {
     pendingCard: null,
     pendingMatches: [],
     lastYakuSig: { player: "", opponent: "" },
-    koikoiCount: 0,
+    koikoiCount: { player: 0, opponent: 0 },
     message:
       starter === "player"
         ? "手札からカードを選んでください"
@@ -244,13 +244,13 @@ function afterCaptureCheck(state: GameState, who: PlayerId): GameState {
     }
 
     const continueKoi =
-      yaku.total < 7 && state.deck.length > 4 && state.koikoiCount < 2;
+      yaku.total < 7 && state.deck.length > 4 && state.koikoiCount.opponent < 2;
     if (continueKoi) {
       return {
         ...state,
         phase: "selectHand",
         current: "player",
-        koikoiCount: state.koikoiCount + 1,
+        koikoiCount: { ...state.koikoiCount, opponent: state.koikoiCount.opponent + 1 },
         lastYakuSig: { ...state.lastYakuSig, [who]: sig },
         pendingCard: null,
         pendingMatches: [],
@@ -325,7 +325,7 @@ function finishRound(
   reason: string,
 ): GameState {
   let points = yaku.total;
-  if (state.rules.koikoiDoubles && state.koikoiCount > 0) {
+  if (state.rules.koikoiDoubles && state.koikoiCount[winner] > 0) {
     points *= 2;
   }
   if (yaku.total >= 7) {
@@ -521,7 +521,7 @@ export function chooseKoikoi(
     ...state,
     phase: "opponentShowHand",
     current: "opponent",
-    koikoiCount: state.koikoiCount + 1,
+    koikoiCount: { ...state.koikoiCount, player: state.koikoiCount.player + 1 },
     message: "こいこい！ 相手の番です…",
     pendingCard: null,
     pendingMatches: [],
